@@ -43,7 +43,7 @@ class Task:
     def search_targets(self):
         if self.args['src'] == None:
             raise Exception('Sources not specified')
-        finder = TargetFinder(self.args['src'])
+        finder = TargetFinder(self.args['src'], self.args['filter'])
         return finder.run()
 
     def fuzz(self, targets):
@@ -60,8 +60,9 @@ class ParserState(Enum):
 
 class TargetFinder:
 
-    def __init__(self, directory):
+    def __init__(self, directory, target_filter):
         self.directory = directory
+        self.target_filter = target_filter
 
     def run(self):
         targets = []
@@ -172,6 +173,9 @@ class TargetFinder:
                         classes[classname] = clazz
                         continue
 
+                    # check if the line matches specified filter
+                    if not self.match_filter(line): continue
+
                     if line.startswith(module):
                         # check if it's a method of a class
                         clazz = None
@@ -223,6 +227,13 @@ class TargetFinder:
 
     def log(self, message):
         print_with_prefix('TargetFinder', message)
+
+    def match_filter(self, line):
+        # check if filter was specified
+        if self.target_filter == None or not self.target_filter:
+            return True
+
+        return self.target_filter in line
 
 class TargetFunction:
 
