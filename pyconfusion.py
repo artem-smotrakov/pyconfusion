@@ -3,9 +3,6 @@
 import argparse
 import core
 
-# TODO: extract number of arguments from clinic sections
-# TODO: generate and run Python code with extracted functions
-# TODO: detect crashes
 # TODO: detect and report wrong syntax
 # TODO: add fuzzers for different types of function parameters
 
