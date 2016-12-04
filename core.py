@@ -303,8 +303,12 @@ class FunctionFuzzer:
             self.log('NotADirectoryError exception: {0}'.format(err))
         except OSError as err:
             self.log('OSError exception: {0}'.format(err))
+        except ValueError as err:
+            self.log('ValueError exception: {0}'.format(err))
         except AttributeError as err:
             self.log('warning: unexpected AttributeError exception: {0}'.format(err))
+        except ModuleNotFoundError as err:
+            self.log('warning: unexpected ModuleNotFoundError exception: {0}'.format(err))
 
     def log(self, message):
         print_with_prefix('FunctionFuzzer', message)
