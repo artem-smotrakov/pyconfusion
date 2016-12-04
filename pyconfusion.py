@@ -3,10 +3,7 @@
 import argparse
 import core
 
-# TODO: look for clinic sections
-# TODO: extract function names from clinic sections
 # TODO: extract number of arguments from clinic sections
-# TODO: extract classes and method names from clinic sections
 # TODO: generate and run Python code with extracted functions
 # TODO: detect crashes
 # TODO: detect and report wrong syntax
