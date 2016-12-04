@@ -210,13 +210,14 @@ class TargetFinder:
                             current_method_or_function = TargetFunction(filename, module, name)
                             functions.append(current_method_or_function)
 
-                    # assume that a line with desctiption of a parameter looks like '    param: desctiption'
+                    # assume that a line with description of a parameter looks like '    param: desctiption'
                     if line.startswith('    ') and ': ' in line:
                         if current_method_or_function == None:
                             self.log('error while parsing line: ' + line)
                             self.log('warning: no function or method found yet')
                         else:
-                            current_method_or_function.increment_args()
+                            parameter_type = self.extract_parameter_type(line)
+                            current_method_or_function.add_parameter(parameter_type)
 
         # merge all found targets
         targets = []
@@ -229,8 +230,35 @@ class TargetFinder:
 
         return targets
 
+    def extract_parameter_type(self, line):
+        parameter_str = line.strip()
+        index = parameter_str.find(':')
+        if index <= 0: return ParameterType.unknown
+        parameter_str = parameter_str[index+1:]
+        index = parameter_str.find(' ')
+        if index > 0:
+            parameter_str = parameter_str[:index]
+        parameter_str = parameter_str.strip()
+        if parameter_str == 'Py_buffer':
+            return ParameterType.byte_like_object
+        if parameter_str == 'int':
+            return ParameterType.integer
+        if parameter_str == 'object':
+            return ParameterType.any_object
+
+        return ParameterType.unknown
+
     def log(self, message):
         print_with_prefix('TargetFinder', message)
+
+class ParameterType(Enum):
+    unknown = 'unknown'
+    byte_like_object = 'byte-like object'
+    integer = 'integer'
+    any_object = 'object'
+
+    def __str__(self):
+        return self.value
 
 class TargetFunction:
 
@@ -238,13 +266,13 @@ class TargetFunction:
         self.filename = filename
         self.module = module
         self.name = name
-        self.args = 0
+        self.parameter_types = []
 
-    def increment_args(self):
-        self.args = self.args + 1
+    def number_of_parameters(self):
+        return len(self.parameter_types)
 
-    def number_of_args(self):
-        return self.args
+    def add_parameter(self, parameter_type):
+        self.parameter_types.append(parameter_type)
 
     def fullname(self):
         return self.name
@@ -273,13 +301,13 @@ class TargetMethod:
 
     def __init__(self, name):
         self. name = name
-        self.args = 0
+        self.parameter_types = []
 
-    def increment_args(self):
-        self.args = self.args + 1
+    def number_of_parameters(self):
+        return len(self.parameter_types)
 
-    def number_of_args(self):
-        return self.args
+    def add_parameter(self, parameter_type):
+        self.parameter_types.append(parameter_type)
 
 class FunctionFuzzer:
 
@@ -289,9 +317,9 @@ class FunctionFuzzer:
     def run(self):
         self.log('fuzz function: ' + self.function.name)
         self.log('sources: ' + self.function.filename)
-        self.log('number of args: {0:d}'.format(self.function.number_of_args()))
+        self.log('number of parameters: {0:d}'.format(self.function.number_of_parameters()))
 
-        if self.function.number_of_args() == 0:
+        if self.function.number_of_parameters() == 0:
             self.log('function doesn\'t have parameters, skip')
             return
 
@@ -305,14 +333,21 @@ class FunctionFuzzer:
             self.log('skip \'signal.pthread_kill()\' function')
             return
 
+        parameter_str = ''
+        for parameter_type in self.function.parameter_types:
+            parameter_str += str(parameter_type) + ', '
+        parameter_str = parameter_str.strip(', ')
+
+        self.log('parameters: ' + parameter_str)
+
         code = 'import ' + self.function.module + '\n'
         parameters = ''
         arg_number = 1
-        while arg_number <= self.function.number_of_args():
+        while arg_number <= self.function.number_of_parameters():
             parameter_name = 'arg' + str(arg_number)
             value = '1'
             code += '{0:s} = {1:s}\n'.format(parameter_name, value)
-            if arg_number == self.function.number_of_args():
+            if arg_number == self.function.number_of_parameters():
                 parameters += parameter_name
             else:
                 parameters += parameter_name + ', '
