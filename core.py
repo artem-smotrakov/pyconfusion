@@ -65,15 +65,26 @@ class TargetFinder:
 
     def run(self):
         targets = []
-        for root, dirs, files in os.walk(self.directory):
+        for filename in self.look_for_c_files(self.directory):
+            for target in self.parse_c_file(filename):
+                targets.append(target)
+
+        return targets
+
+    def look_for_c_files(self, path):
+        result = []
+        if os.path.isfile(path):
+            result.append(path)
+            return result
+
+        for root, dirs, files in os.walk(path):
             for file in files:
                 # TODO: should it look for .h files as well?
                 if file.endswith(".c"):
                     filename = os.path.join(root, file)
-                    for target in self.parse_c_file(filename):
-                        targets.append(target)
+                    result.append(filename)
 
-        return targets
+        return result
 
     def parse_c_file(self, filename):
         self.log('parse file: ' + filename)
