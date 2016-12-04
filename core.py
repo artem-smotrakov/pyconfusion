@@ -270,6 +270,10 @@ class FunctionFuzzer:
             self.log('function doesn\'t have parameters, skip')
             return
 
+        if self.function.module == 'os':
+            self.log('skip \'os\' module')
+            return
+
         code = 'import ' + self.function.module + '\n'
         parameters = ''
         arg_number = 1
