@@ -253,6 +253,7 @@ class FunctionFuzzer:
 
     def run(self):
         self.log('fuzz function: ' + self.function.name)
+        self.log('sources: ' + self.function.filename)
         self.log('number of args: {0:d}'.format(self.function.number_of_args()))
 
         if self.function.number_of_args() == 0:
@@ -280,6 +281,8 @@ class FunctionFuzzer:
             exec(code)
         except TypeError as err:
             self.log('exception: {0}'.format(err))
+        except AttributeError as err:
+            self.log('warning: unexpected exception: {0}'.format(err))
 
     def log(self, message):
         print_with_prefix('FunctionFuzzer', message)
