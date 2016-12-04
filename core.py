@@ -172,13 +172,23 @@ class TargetFinder:
 
                         if clazz != None:
                             # add a method
+
                             methodname = line[len(clazz.name)+1:]
                             self.log('found method of class \'{0:s}\': {1:s}'.format(clazz.name, methodname))
                             current_method_or_function = clazz.add_method(methodname)
                         else:
                             # add a function
-                            self.log('found function: ' + line)
-                            current_method_or_function = TargetFunction(filename, module, line)
+
+                            index = line.find(' ')
+                            if index > 0:
+                                name = line[:index]
+                            else:
+                                name = line
+
+                            name = name.strip()
+                            self.log('found function: ' + name)
+
+                            current_method_or_function = TargetFunction(filename, module, name)
                             functions.append(current_method_or_function)
 
                     # assume that a line with desctiption of a parameter looks like '    param: desctiption'
