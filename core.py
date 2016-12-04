@@ -43,6 +43,7 @@ class Task:
 class ParserState(Enum):
     expect_clinic_input = 1
     inside_clinic_input = 2
+    expect_end_generated_code = 3
 
 class TargetFinder:
 
@@ -62,6 +63,7 @@ class TargetFinder:
         with open(filename) as f:
             content = f.readlines()
             state = ParserState.expect_clinic_input
+            module = None
             for line in content:
                 # trim the line
                 line = line.strip()
@@ -77,19 +79,54 @@ class TargetFinder:
                     state = ParserState.inside_clinic_input
                     continue
 
+                if '[clinic start generated code]' in line:
+                    if state != ParserState.inside_clinic_input:
+                        raise Exception('Unexpected [clinic start generated code] section')
+
+                    # now start skipping just skip the actual code
+                    state = ParserState.expect_end_generated_code
+                    continue
+
+                if '[clinic end generated code' in line:
+                    # found [clinic end generated code] line
+                    # then we look for next [clinic input] section
+                    # we don't check for ParserState.expect_end_generated_code state here
+                    # because there may be multiple [clinic end generated code] sections
+
+                    state = ParserState.expect_clinic_input
+                    continue
+
+                # skip the code if we are in [clinic end generated code] section
+                if state == ParserState.expect_end_generated_code:
+                    continue
+
                 # check if we are inside [clinic input] section, and should expect declarations
                 if state == ParserState.inside_clinic_input:
                     # parse [clinic input] section
 
+                    # ignore comments
+                    if line.startswith('#'): continue
+
                     # check if we found a module declaration
-                    if line.startswith('module'):
+                    if line.startswith('module '):
+                        # there should be only one module in a file
+                        if module != None:
+                            self.log('error while parsing line: ' + line)
+                            raise Exception('Module already defined')
+
                         module = line[len('module'):]
-                        module.strip()
+                        module = module.strip()
                         self.log('found \'{0:s}\' module'.format(module))
-                    elif '[clinic end generated code' in line:
-                        # found [clinic end generated code] line
-                        # then we look for next [clinic input] section
-                        state = ParserState.expect_clinic_input
+                        continue
+
+                     # at thin point we should have found a module name
+                    if module is None:
+                        self.log('error while parsing line: ' + line)
+                        raise Exception('No module name found')
+
+                    if line.startswith(module):
+                        self.log('found something: ' + line)
+
 
     def log(self, message):
         print_with_prefix('TargetFinder', message)
