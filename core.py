@@ -64,6 +64,7 @@ class TargetFinder:
             content = f.readlines()
             state = ParserState.expect_clinic_input
             module = None
+            classes = {}
             for line in content:
                 # trim the line
                 line = line.strip()
@@ -119,10 +120,27 @@ class TargetFinder:
                         self.log('found \'{0:s}\' module'.format(module))
                         continue
 
-                     # at thin point we should have found a module name
+                     # at this point we should have found a module name
                     if module is None:
                         self.log('error while parsing line: ' + line)
                         raise Exception('No module name found')
+
+                    # check if we fould a class declaration
+                    if line.startswith('class '):
+                        classname = line[len('class '):]
+                        classname = classname[:classname.index(' ')]
+                        classname = classname.strip();
+
+                        # check for duplicate class declarations
+                        if classname in classes:
+                            self.log('error while parsing line: ' + line)
+                            raise Exception('duplicate class declaration')
+
+                        self.log('found a class ' + classname)
+
+                        clazz = TargetClass(filename, module, classname)
+                        classes[classname] = clazz
+                        continue
 
                     if line.startswith(module):
                         self.log('found something: ' + line)
@@ -137,3 +155,15 @@ class TargetFunction:
         self.filename = filename
         self.module = module
         self.name = name
+
+class TargetClass:
+
+    def __init__(self, filename, module, name):
+        self.filename = filename
+        self.module = module
+        self.name = name
+
+class TargetMethod:
+
+    def __init__(self, name):
+        self. name = name
