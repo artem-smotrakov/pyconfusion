@@ -295,6 +295,8 @@ class FunctionFuzzer:
             self.log('function doesn\'t have parameters, skip')
             return
 
+        # TODO: add a command line option to specify excluded targets
+        #       (os, and signal.pthread_kill should be excluded by default)
         if self.function.module == 'os':
             self.log('skip \'os\' module')
             return

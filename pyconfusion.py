@@ -3,7 +3,11 @@
 import argparse
 import core
 
-# TODO: detect and report wrong syntax
+# TODO: extract parameter types from [clinic input] sections
+# TODO: before starting fuzzing, check if we can make a call that doesn't cause TypeError
+#       otherwise, skip with a warning
+# TODO: fuzz one by one parameter (other parameters should contain valid types)
+# TODO: print a summary in the end
 # TODO: add fuzzers for different types of function parameters
 
 parser = argparse.ArgumentParser()
