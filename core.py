@@ -315,9 +315,8 @@ class FunctionFuzzer:
         self.function = function
 
     def run(self):
-        self.log('fuzz function: ' + self.function.name)
+        self.log('try to fuzz function: ' + self.function.name)
         self.log('sources: ' + self.function.filename)
-        self.log('number of parameters: {0:d}'.format(self.function.number_of_parameters()))
 
         if self.function.number_of_parameters() == 0:
             self.log('function doesn\'t have parameters, skip')
@@ -332,6 +331,17 @@ class FunctionFuzzer:
         if self.function.name == 'signal.pthread_kill':
             self.log('skip \'signal.pthread_kill()\' function')
             return
+
+        if not self.check_correct_parameter_type(): return
+
+        self.log('start fuzzing')
+
+    # check if parameter types are correct
+    # it tries to call specified function with correct values of its parameter types
+    # returns true it the call suceeded
+    def check_correct_parameter_type(self):
+        self.log('check for correct parameter types')
+        self.log('number of parameters: {0:d}'.format(self.function.number_of_parameters()))
 
         code = 'import ' + self.function.module + '\n'
         parameters = ''
@@ -354,21 +364,29 @@ class FunctionFuzzer:
         self.log('parameter types: ' + parameter_str)
 
         self.log('run the following code:\n\n' + code)
-
+        success = False
         try:
             exec(code)
+            success = True
         except TypeError as err:
-            self.log('TypeError exception: {0}'.format(err))
-        except NotADirectoryError as err:
-            self.log('NotADirectoryError exception: {0}'.format(err))
-        except OSError as err:
-            self.log('OSError exception: {0}'.format(err))
+            self.log('warning: unexpected TypeError exception: {0}'.format(err))
         except ValueError as err:
-            self.log('ValueError exception: {0}'.format(err))
+            self.log('warning: unexpected ValueError exception: {0}'.format(err))
         except AttributeError as err:
             self.log('warning: unexpected AttributeError exception: {0}'.format(err))
         except ModuleNotFoundError as err:
             self.log('warning: unexpected ModuleNotFoundError exception: {0}'.format(err))
+        except Exception as err:
+            # any other exception is considered as extected
+            self.log('expected exception {0}: {1}'.format(type(err), err))
+            success = True
+
+        if success:
+            self.log('good to start fuzzing')
+            return True
+        else:
+            self.log('couldn\' call function successfully, skip fuzzing')
+            return False
 
     def log(self, message):
         print_with_prefix('FunctionFuzzer', message)
