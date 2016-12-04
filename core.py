@@ -274,6 +274,10 @@ class FunctionFuzzer:
             self.log('skip \'os\' module')
             return
 
+        if self.function.name == 'signal.pthread_kill':
+            self.log('skip \'signal.pthread_kill()\' function')
+            return
+
         code = 'import ' + self.function.module + '\n'
         parameters = ''
         arg_number = 1
