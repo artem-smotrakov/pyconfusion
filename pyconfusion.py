@@ -11,7 +11,7 @@ import core
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',  help='path to sources', default='./')
-parser.add_argument('--mode', help='what do you want to do?', choices=['targets'], default='targets')
+parser.add_argument('--mode', help='what do you want to do?', choices=['targets', 'fuzzer'], default='targets')
 
 # create task
 task = core.Task(parser.parse_args())

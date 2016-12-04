@@ -33,12 +33,21 @@ class Task:
 
     def run(self):
         if self.args['mode'] == 'targets':
-            if self.args['src'] == None:
-                raise Exception('Sources not specified')
-            finder = TargetFinder(self.args['src'])
-            finder.run()
+            self.search_targets()
+        elif self.args['mode'] == 'fuzzer':
+            targets = self.search_targets()
+            self.fuzz(targets)
         else:
             raise Exception('Unknown mode: ' + self.args['mode'])
+
+    def search_targets(self):
+        if self.args['src'] == None:
+            raise Exception('Sources not specified')
+        finder = TargetFinder(self.args['src'])
+        return finder.run()
+
+    def fuzz(self, targets):
+        raise Exception('Not implemented')
 
 class ParserState(Enum):
     expect_clinic_input = 1
