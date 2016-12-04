@@ -60,13 +60,13 @@ class ParserState(Enum):
 
 class TargetFinder:
 
-    def __init__(self, directory, target_filter):
-        self.directory = directory
+    def __init__(self, path, target_filter):
+        self.path = path
         self.target_filter = target_filter
 
     def run(self):
         targets = []
-        for filename in self.look_for_c_files(self.directory):
+        for filename in self.look_for_c_files(self.path):
             for target in self.parse_c_file(filename):
                 targets.append(target)
 
