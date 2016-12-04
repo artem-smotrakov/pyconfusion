@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import textwrap
+import os
 
 # print out a message with prefix
 def print_with_prefix(prefix, message):
@@ -29,4 +30,22 @@ class Task:
         return self.args[name]
 
     def run(self):
-        raise Exception('Not implemented')
+        if self.args['mode'] == 'targets':
+            if self.args['src'] == None:
+                raise Exception('Sources not specified')
+            finder = TargetFinder(self.args['src'])
+            finder.run()
+        else:
+            raise Exception('Unknown mode: ' + self.args['mode'])
+
+class TargetFinder:
+
+    def __init__(self, directory):
+        self.directory = directory
+
+    def run(self):
+        for root, dirs, files in os.walk(self.directory):
+            for file in files:
+                # TODO: should it look for .h files as well?
+                if file.endswith(".c"):
+                    print(os.path.join(root, file))

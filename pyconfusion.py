@@ -3,7 +3,6 @@
 import argparse
 import core
 
-# TODO: look for C files
 # TODO: look for clinic sections
 # TODO: extract function names from clinic sections
 # TODO: extract number of arguments from clinic sections
@@ -15,6 +14,7 @@ import core
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',  help='path to sources', default='./')
+parser.add_argument('--mode', help='what do you want to do?', choices=['targets'], default='targets')
 
 # create task
 task = core.Task(parser.parse_args())
