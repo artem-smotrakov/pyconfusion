@@ -70,9 +70,10 @@ class TargetFinder:
             module = None
             classes = {}
             functions = []
+            current_method_or_function = None
             for line in content:
                 # trim the line
-                line = line.strip()
+                line = line.rstrip('\n')
 
                 # skip empty lines
                 if not line: continue
@@ -160,11 +161,20 @@ class TargetFinder:
                             # add a method
                             methodname = line[len(clazz.name)+1:]
                             self.log('found method of class \'{0:s}\': {1:s}'.format(clazz.name, methodname))
-                            clazz.add_method(methodname)
+                            current_method_or_function = clazz.add_method(methodname)
                         else:
                             # add a function
                             self.log('found function: ' + line)
-                            functions.append(TargetFunction(filename, module, line))
+                            current_method_or_function = TargetFunction(filename, module, line)
+                            functions.append(current_method_or_function)
+
+                    # assume that a line with desctiption of a parameter looks like '    param: desctiption'
+                    if line.startswith('    ') and ': ' in line:
+                        if current_method_or_function == None:
+                            self.log('error while parsing line: ' + line)
+                            self.log('warning: no function or method found yet')
+                        else:
+                            current_method_or_function.increment_args()
 
         # merge all found targets
         targets = []
@@ -186,6 +196,10 @@ class TargetFunction:
         self.filename = filename
         self.module = module
         self.name = name
+        self.args = 0
+
+    def increment_args(self):
+        self.args = self.args + 1
 
 class TargetClass:
 
@@ -199,9 +213,16 @@ class TargetClass:
         if name in self.methods:
             raise Exception('Method already exists: ' + name)
 
-        self.methods[name] = TargetMethod(name)
+        method = TargetMethod(name)
+        self.methods[name] = method
+
+        return method
 
 class TargetMethod:
 
     def __init__(self, name):
         self. name = name
+        self.args = 0
+
+    def increment_args(self):
+        self.args = self.args + 1
