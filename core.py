@@ -290,9 +290,13 @@ class FunctionFuzzer:
         try:
             exec(code)
         except TypeError as err:
-            self.log('exception: {0}'.format(err))
+            self.log('TypeError exception: {0}'.format(err))
+        except NotADirectoryError as err:
+            self.log('NotADirectoryError exception: {0}'.format(err))
+        except OSError as err:
+            self.log('OSError exception: {0}'.format(err))
         except AttributeError as err:
-            self.log('warning: unexpected exception: {0}'.format(err))
+            self.log('warning: unexpected AttributeError exception: {0}'.format(err))
 
     def log(self, message):
         print_with_prefix('FunctionFuzzer', message)
