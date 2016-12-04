@@ -43,14 +43,24 @@ class Task:
     def search_targets(self):
         if self.args['src'] == None:
             raise Exception('Sources not specified')
-        finder = TargetFinder(self.args['src'], self.args['filter'])
+        finder = TargetFinder(self.args['src'])
         return finder.run()
 
     def fuzz(self, targets):
         for target in targets:
+            # check if the line matches specified filter
+            if not self.match_filter(target): continue
+
             # TODO: support fuzzing methods
             if isinstance(target, TargetFunction):
                 FunctionFuzzer(target).run()
+
+    def match_filter(self, target):
+        # check if filter was specified
+        if self.args['filter'] == None or not self.args['filter']:
+            return True
+
+        return self.args['filter'] in target.fullname()
 
 
 class ParserState(Enum):
@@ -60,9 +70,8 @@ class ParserState(Enum):
 
 class TargetFinder:
 
-    def __init__(self, path, target_filter):
+    def __init__(self, path):
         self.path = path
-        self.target_filter = target_filter
 
     def run(self):
         targets = []
@@ -173,9 +182,6 @@ class TargetFinder:
                         classes[classname] = clazz
                         continue
 
-                    # check if the line matches specified filter
-                    if not self.match_filter(line): continue
-
                     if line.startswith(module):
                         # check if it's a method of a class
                         clazz = None
@@ -187,13 +193,11 @@ class TargetFinder:
 
                         if clazz != None:
                             # add a method
-
                             methodname = line[len(clazz.name)+1:]
                             self.log('found method of class \'{0:s}\': {1:s}'.format(clazz.name, methodname))
                             current_method_or_function = clazz.add_method(methodname)
                         else:
                             # add a function
-
                             index = line.find(' ')
                             if index > 0:
                                 name = line[:index]
@@ -228,13 +232,6 @@ class TargetFinder:
     def log(self, message):
         print_with_prefix('TargetFinder', message)
 
-    def match_filter(self, line):
-        # check if filter was specified
-        if self.target_filter == None or not self.target_filter:
-            return True
-
-        return self.target_filter in line
-
 class TargetFunction:
 
     def __init__(self, filename, module, name):
@@ -248,6 +245,9 @@ class TargetFunction:
 
     def number_of_args(self):
         return self.args
+
+    def fullname(self):
+        return self.name
 
 class TargetClass:
 
@@ -265,6 +265,9 @@ class TargetClass:
         self.methods[name] = method
 
         return method
+
+    def fullname(self):
+        return self.name
 
 class TargetMethod:
 
