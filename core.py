@@ -63,7 +63,7 @@ class TargetFinder:
         return targets
 
     def parse_c_file(self, filename):
-        self.log('parse ' + filename)
+        self.log('parse file: ' + filename)
         with open(filename) as f:
             content = f.readlines()
             state = ParserState.expect_clinic_input
@@ -122,7 +122,7 @@ class TargetFinder:
 
                         module = line[len('module'):]
                         module = module.strip()
-                        self.log('found \'{0:s}\' module'.format(module))
+                        self.log('found module: ' + module)
                         continue
 
                      # at this point we should have found a module name
@@ -159,11 +159,11 @@ class TargetFinder:
                         if clazz != None:
                             # add a method
                             methodname = line[len(clazz.name)+1:]
-                            self.log('found method ' + methodname)
+                            self.log('found method of class \'{0:s}\': {1:s}'.format(clazz.name, methodname))
                             clazz.add_method(methodname)
                         else:
                             # add a function
-                            self.log('found function ' + line)
+                            self.log('found function: ' + line)
                             functions.append(TargetFunction(filename, module, line))
 
         # merge all found targets
