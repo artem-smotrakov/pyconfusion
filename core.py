@@ -51,12 +51,16 @@ class TargetFinder:
         self.directory = directory
 
     def run(self):
+        targets = []
         for root, dirs, files in os.walk(self.directory):
             for file in files:
                 # TODO: should it look for .h files as well?
                 if file.endswith(".c"):
                     filename = os.path.join(root, file)
-                    self.parse_c_file(filename)
+                    for target in self.parse_c_file(filename):
+                        targets.append(target)
+
+        return targets
 
     def parse_c_file(self, filename):
         self.log('parse ' + filename)
@@ -65,6 +69,7 @@ class TargetFinder:
             state = ParserState.expect_clinic_input
             module = None
             classes = {}
+            functions = []
             for line in content:
                 # trim the line
                 line = line.strip()
@@ -125,7 +130,7 @@ class TargetFinder:
                         self.log('error while parsing line: ' + line)
                         raise Exception('No module name found')
 
-                    # check if we fould a class declaration
+                    # check if we found a class declaration
                     if line.startswith('class '):
                         classname = line[len('class '):]
                         classname = classname[:classname.index(' ')]
@@ -136,15 +141,41 @@ class TargetFinder:
                             self.log('error while parsing line: ' + line)
                             raise Exception('duplicate class declaration')
 
-                        self.log('found a class ' + classname)
+                        self.log('found class ' + classname)
 
                         clazz = TargetClass(filename, module, classname)
                         classes[classname] = clazz
                         continue
 
                     if line.startswith(module):
-                        self.log('found something: ' + line)
+                        # check if it's a method of a class
+                        clazz = None
+                        for classname in classes:
+                            if line.startswith(classname):
+                                # it is a declaration of a method
+                                clazz = classes[classname];
+                                break
 
+                        if clazz != None:
+                            # add a method
+                            methodname = line[len(clazz.name)+1:]
+                            self.log('found method ' + methodname)
+                            clazz.add_method(methodname)
+                        else:
+                            # add a function
+                            self.log('found function ' + line)
+                            functions.append(TargetFunction(filename, module, line))
+
+        # merge all found targets
+        targets = []
+
+        for func in functions:
+            targets.append(func)
+
+        for key in classes:
+            targets.append(classes[key])
+
+        return targets
 
     def log(self, message):
         print_with_prefix('TargetFinder', message)
@@ -162,6 +193,13 @@ class TargetClass:
         self.filename = filename
         self.module = module
         self.name = name
+        self.methods = {}
+
+    def add_method(self, name):
+        if name in self.methods:
+            raise Exception('Method already exists: ' + name)
+
+        self.methods[name] = TargetMethod(name)
 
 class TargetMethod:
 
