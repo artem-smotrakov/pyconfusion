@@ -47,7 +47,11 @@ class Task:
         return finder.run()
 
     def fuzz(self, targets):
-        raise Exception('Not implemented')
+        for target in targets:
+            # TODO: support fuzzing methods
+            if isinstance(target, TargetFunction):
+                FunctionFuzzer(target).run()
+
 
 class ParserState(Enum):
     expect_clinic_input = 1
@@ -210,6 +214,9 @@ class TargetFunction:
     def increment_args(self):
         self.args = self.args + 1
 
+    def number_of_args(self):
+        return self.args
+
 class TargetClass:
 
     def __init__(self, filename, module, name):
@@ -235,3 +242,44 @@ class TargetMethod:
 
     def increment_args(self):
         self.args = self.args + 1
+
+    def number_of_args(self):
+        return self.args
+
+class FunctionFuzzer:
+
+    def __init__(self, function):
+        self.function = function
+
+    def run(self):
+        self.log('fuzz function: ' + self.function.name)
+        self.log('number of args: {0:d}'.format(self.function.number_of_args()))
+
+        if self.function.number_of_args() == 0:
+            self.log('function doesn\'t have parameters, skip')
+            return
+
+        code = 'import ' + self.function.module + '\n'
+        parameters = ''
+        arg_number = 1
+        while arg_number <= self.function.number_of_args():
+            parameter_name = 'arg' + str(arg_number)
+            value = '1'
+            code += '{0:s} = {1:s}\n'.format(parameter_name, value)
+            if arg_number == self.function.number_of_args():
+                parameters += parameter_name
+            else:
+                parameters += parameter_name + ', '
+            arg_number = arg_number + 1
+
+        code += '{0:s}({1:s})\n'.format(self.function.name, parameters)
+
+        self.log('run the following code:\n\n' + code)
+
+        try:
+            exec(code)
+        except TypeError as err:
+            self.log('exception: {0}'.format(err))
+
+    def log(self, message):
+        print_with_prefix('FunctionFuzzer', message)
