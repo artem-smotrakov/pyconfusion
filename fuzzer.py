@@ -5,6 +5,7 @@ import os
 import core
 
 from core import ParameterType
+from core import FunctionCaller
 
 class FunctionFuzzer:
 
@@ -38,32 +39,22 @@ class FunctionFuzzer:
     # returns true it the call suceeded
     def check_correct_parameter_type(self):
         self.log('check for correct parameter types')
-        self.log('number of parameters: {0:d}'.format(self.function.number_of_parameters()))
 
-        code = 'import ' + self.function.module + '\n'
-        parameters = ''
-        arg_number = 1
         parameter_str = ''
+        arg_number = 1
         for parameter_type in self.function.parameter_types:
-            parameter_str += str(parameter_type) + ', '
-            parameter_name = 'arg' + str(arg_number)
-            value = self.default_value(parameter_type)
-            code += '{0:s} = {1:s}\n'.format(parameter_name, value)
-            if arg_number == self.function.number_of_parameters():
-                parameters += parameter_name
-            else:
-                parameters += parameter_name + ', '
+            parameter_str += str(parameter_type)
+            if arg_number != self.function.number_of_parameters():
+                parameter_str +=  ', '
             arg_number = arg_number + 1
 
-        code += '{0:s}({1:s})\n'.format(self.function.name, parameters)
-
-        parameter_str = parameter_str.strip(', ')
+        self.log('number of parameters: {0:d}'.format(self.function.number_of_parameters()))
         self.log('parameter types: ' + parameter_str)
 
-        self.log('run the following code:\n\n' + code)
+        caller = FunctionCaller(self.function)
         success = False
         try:
-            exec(code)
+            caller.call()
             success = True
         except TypeError as err:
             self.log('warning: unexpected TypeError exception: {0}'.format(err))
@@ -87,15 +78,3 @@ class FunctionFuzzer:
 
     def log(self, message):
         core.print_with_prefix('FunctionFuzzer', message)
-
-    def default_value(self, parameter_type):
-        if parameter_type == ParameterType.byte_like_object:
-            return 'bytes()'
-        if parameter_type == ParameterType.integer:
-            return '42'
-        if parameter_type == ParameterType.any_object:
-            # TODO: anything better?
-            return '()'
-
-        # TODO: anything better?
-        return '()'

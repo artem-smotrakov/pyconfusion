@@ -217,6 +217,53 @@ class ParameterType(Enum):
     def __str__(self):
         return self.value
 
+    def default_value(parameter_type):
+        if parameter_type == ParameterType.byte_like_object:
+            return 'bytes()'
+        if parameter_type == ParameterType.integer:
+            return '42'
+        if parameter_type == ParameterType.any_object:
+            # TODO: anything better?
+            return '()'
+
+        # TODO: anything better?
+        return '()'
+
+class FunctionCaller:
+
+    def __init__(self, function):
+        self.function = function
+        self.parameter_values = []
+        for parameter_type in function.parameter_types:
+            self.parameter_values.append(ParameterType.default_value(parameter_type))
+        self.prepare()
+
+    def prepare(self):
+        if self.function.number_of_parameters() != len(self.parameter_values):
+            raise Exception('number of parameters is not equal to number of values')
+
+        self.code = 'import ' + self.function.module + '\n'
+        parameters = ''
+        arg_number = 1
+        for parameter_type in self.function.parameter_types:
+            parameter_name = 'p' + str(arg_number)
+            value = self.parameter_values[arg_number-1]
+            self.code += '{0:s} = {1:s}\n'.format(parameter_name, value)
+            if arg_number == self.function.number_of_parameters():
+                parameters += parameter_name
+            else:
+                parameters += parameter_name + ', '
+            arg_number = arg_number + 1
+
+        self.code += '{0:s}({1:s})\n'.format(self.function.name, parameters)
+
+    def call(self):
+        self.log('run the following code:\n\n' + self.code)
+        exec(self.code)
+
+    def log(self, message):
+        print_with_prefix('FunctionCaller', message)
+
 class TargetFunction:
 
     def __init__(self, filename, module, name):
