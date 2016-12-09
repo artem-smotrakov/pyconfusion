@@ -33,6 +33,14 @@ class FunctionFuzzer:
             self.log('skip \'signal.pthread_kill()\' function')
             return
 
+        if self.function.name == 'signal.sigwait':
+            self.log('skip \'signal.sigwait()\' function')
+            return
+
+        if self.function.name == 'signal.sigwaitinfo':
+            self.log('skip \'signal.sigwaitinfo()\' function')
+            return
+
         # first, we try to call a target function with parameters of expected types
         # if this call succeds, we can start fuzzing
         # while fuzzing, we fuzz each particular parameter,
