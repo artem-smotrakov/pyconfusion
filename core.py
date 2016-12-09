@@ -257,6 +257,10 @@ class FunctionCaller:
 
         self.code += '{0:s}({1:s})\n'.format(self.function.name, parameters)
 
+    def set_parameter_value(self, arg_number, value):
+        self.parameter_values[arg_number - 1] = value
+        self.prepare()
+
     def call(self):
         self.log('run the following code:\n\n' + self.code)
         exec(self.code)

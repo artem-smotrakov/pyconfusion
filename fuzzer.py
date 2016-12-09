@@ -9,6 +9,9 @@ from core import FunctionCaller
 
 class FunctionFuzzer:
 
+    values = ('42', '42.3', 'True', 'False', '()', '[]', '{}',
+              'bytes()', 'bytearray()', '\'ololo\'', 'frozenset()', 'set()')
+
     def __init__(self, function):
         self.function = function
 
@@ -30,9 +33,32 @@ class FunctionFuzzer:
             self.log('skip \'signal.pthread_kill()\' function')
             return
 
-        if not self.check_correct_parameter_type(): return
+        # first, we try to call a target function with parameters of expected types
+        # if this call succeds, we can start fuzzing
+        # while fuzzing, we fuzz each particular parameter,
+        # but pass values of expected types to other parameters
+        # this approach may help us to pass type checks of some parameters,
+        # and reach more code in the target function
 
-        self.log('start fuzzing')
+        if self.check_correct_parameter_type():
+            self.log('start fuzzing')
+        else:
+            self.log('couldn\' call function successfully, skip fuzzing')
+            return
+
+
+
+        arg_number = 1
+        while arg_number <= self.function.number_of_parameters():
+            for value in FunctionFuzzer.values:
+                caller = FunctionCaller(self.function)
+                caller.set_parameter_value(arg_number, value)
+                try:
+                    caller.call()
+                    self.log('wow, it succeded')
+                except Exception as err:
+                    self.log('exception {0}: {1}'.format(type(err), err))
+            arg_number = arg_number + 1
 
     # check if parameter types are correct
     # it tries to call specified function with correct values of its parameter types
@@ -69,12 +95,7 @@ class FunctionFuzzer:
             self.log('expected exception {0}: {1}'.format(type(err), err))
             success = True
 
-        if success:
-            self.log('good to start fuzzing')
-            return True
-        else:
-            self.log('couldn\' call function successfully, skip fuzzing')
-            return False
+        return success
 
     def log(self, message):
         core.print_with_prefix('FunctionFuzzer', message)
