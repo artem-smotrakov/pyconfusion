@@ -6,9 +6,7 @@ import core
 from fuzzer import FunctionFuzzer
 from core import *
 
-# TODO: fuzz one by one parameter (other parameters should contain valid types)
 # TODO: gather info, and print out a summary in the end
-# TODO: add fuzzers for different types of function parameters
 
 # contains fuzzer configuration
 # all parameters can be accessed as attributes
