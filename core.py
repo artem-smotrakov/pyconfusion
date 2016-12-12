@@ -235,7 +235,7 @@ class ParameterType(Enum):
         if ptype == ParameterType.byte_like_object:
             return 'bytes()'
         if ptype == ParameterType.integer:
-            return '42'
+            return '1'
         if ptype == ParameterType.any_object:
             # TODO: anything better?
             return '()'
