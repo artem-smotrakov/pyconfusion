@@ -200,6 +200,8 @@ class TargetFinder:
             return ParameterType.byte_like_object
         if parameter_str == 'int':
             return ParameterType.integer
+        if parameter_str == 'double':
+            return ParameterType.double
         if parameter_str == 'object':
             return ParameterType.any_object
         if parameter_str == 'Py_ssize_t':
@@ -216,6 +218,7 @@ class ParameterType(Enum):
     integer = 'integer'
     any_object = 'object'
     ssize_t = 'ssize_t'
+    double = 'double'
 
     def __str__(self):
         return self.value
@@ -230,6 +233,8 @@ class ParameterType(Enum):
             return '()'
         if ptype == ParameterType.ssize_t:
             return '1'
+        if ptype == ParameterType.double:
+            return '4.2'
 
         # TODO: anything better?
         return '()'
