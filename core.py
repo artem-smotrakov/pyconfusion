@@ -218,6 +218,8 @@ class TargetFinder:
             return ParameterType.boolean
         if pstr == 'ascii_buffer':
             return ParameterType.ascii_buffer
+        if 'unsigned_int' in pstr:
+            return ParameterType.unsigned_int
 
         return ParameterType.unknown
 
@@ -233,6 +235,7 @@ class ParameterType(Enum):
     double = 'double'
     boolean = 'boolean'
     ascii_buffer = 'ascii buffer'
+    unsigned_int = 'unsigned integer'
 
     def __str__(self):
         return self.value
@@ -241,6 +244,8 @@ class ParameterType(Enum):
         if ptype == ParameterType.byte_like_object:
             return 'bytes()'
         if ptype == ParameterType.integer:
+            return '1'
+        if ptype == ParameterType.unsigned_int:
             return '1'
         if ptype == ParameterType.any_object:
             # TODO: anything better?
