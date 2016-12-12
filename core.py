@@ -212,7 +212,7 @@ class TargetFinder:
             return ParameterType.double
         if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
             return ParameterType.complex_number
-        if pstr == 'object':
+        if pstr == 'object' or 'object(c_default=' in pstr:
             return ParameterType.any_object
         if pstr == 'Py_ssize_t':
             return ParameterType.ssize_t
