@@ -220,6 +220,8 @@ class TargetFinder:
             return ParameterType.boolean
         if pstr == 'ascii_buffer':
             return ParameterType.ascii_buffer
+        if pstr == 'unicode':
+            return ParameterType.unicode_buffer
         if 'unsigned_int' in pstr:
             return ParameterType.unsigned_int
 
@@ -237,6 +239,7 @@ class ParameterType(Enum):
     double = 'double'
     boolean = 'boolean'
     ascii_buffer = 'ascii buffer'
+    unicode_buffer = 'unicode buffer'
     unsigned_int = 'unsigned integer'
     complex_number = 'complex number'
 
@@ -262,7 +265,9 @@ class ParameterType(Enum):
         if ptype == ParameterType.boolean:
             return 'True'
         if ptype == ParameterType.ascii_buffer:
-            return 'ascii'
+            return '\'ascii\''
+        if ptype == ParameterType.unicode_buffer:
+            return '\'unicode\''
 
         # TODO: anything better?
         return '()'
