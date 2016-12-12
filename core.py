@@ -199,7 +199,7 @@ class TargetFinder:
 
         # check if there is a default value
         # TODO: use default value while fuzzing
-        index = pstr.find('=')
+        index = pstr.rfind('=')
         if index >= 0:
             pstr = pstr[:index]
             pstr = pstr.strip()
@@ -214,6 +214,8 @@ class TargetFinder:
             return ParameterType.any_object
         if pstr == 'Py_ssize_t':
             return ParameterType.ssize_t
+        if pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")':
+            return ParameterType.boolean
 
         return ParameterType.unknown
 
@@ -227,6 +229,7 @@ class ParameterType(Enum):
     any_object = 'object'
     ssize_t = 'ssize_t'
     double = 'double'
+    boolean = 'boolean'
 
     def __str__(self):
         return self.value
@@ -243,6 +246,8 @@ class ParameterType(Enum):
             return '1'
         if ptype == ParameterType.double:
             return '4.2'
+        if ptype == ParameterType.boolean:
+            return 'True'
 
         # TODO: anything better?
         return '()'
