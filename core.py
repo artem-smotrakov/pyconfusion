@@ -173,6 +173,14 @@ class TargetFinder:
                             self.log('error while parsing line: ' + line)
                             self.log('warning: no function or method found yet')
                         else:
+                            index = line.find(':')
+                            if index <= 0: continue
+                            parameter_name = line[:index].strip()
+
+                            # TODO: seems like we need to take into account indentation here
+                            #       instead of looking for whitespaces
+                            if ' ' in parameter_name: continue
+
                             parameter_type = self.extract_parameter_type(line)
                             current_method_or_function.add_parameter(parameter_type)
 
