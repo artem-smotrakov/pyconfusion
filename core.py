@@ -216,6 +216,8 @@ class TargetFinder:
             return ParameterType.ssize_t
         if pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")':
             return ParameterType.boolean
+        if pstr == 'ascii_buffer':
+            return ParameterType.ascii_buffer
 
         return ParameterType.unknown
 
@@ -230,6 +232,7 @@ class ParameterType(Enum):
     ssize_t = 'ssize_t'
     double = 'double'
     boolean = 'boolean'
+    ascii_buffer = 'ascii buffer'
 
     def __str__(self):
         return self.value
@@ -248,6 +251,8 @@ class ParameterType(Enum):
             return '4.2'
         if ptype == ParameterType.boolean:
             return 'True'
+        if ptype == ParameterType.ascii_buffer:
+            return 'ascii'
 
         # TODO: anything better?
         return '()'
