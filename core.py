@@ -218,6 +218,8 @@ class TargetFinder:
             return ParameterType.ssize_t
         if pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")':
             return ParameterType.boolean
+        if pstr.startswith('str(accept='):
+            return ParameterType.string
         if pstr == 'ascii_buffer':
             return ParameterType.ascii_buffer
         if pstr == 'unicode':
@@ -238,6 +240,7 @@ class ParameterType(Enum):
     ssize_t = 'ssize_t'
     double = 'double'
     boolean = 'boolean'
+    string = 'string'
     ascii_buffer = 'ascii buffer'
     unicode_buffer = 'unicode buffer'
     unsigned_int = 'unsigned integer'
@@ -264,6 +267,8 @@ class ParameterType(Enum):
             return '4.2'
         if ptype == ParameterType.boolean:
             return 'True'
+        if ptype == 'string':
+            return '\'string\''
         if ptype == ParameterType.ascii_buffer:
             return '\'ascii\''
         if ptype == ParameterType.unicode_buffer:
