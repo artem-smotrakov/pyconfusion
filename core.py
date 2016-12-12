@@ -210,6 +210,8 @@ class TargetFinder:
             return ParameterType.integer
         if pstr == 'double':
             return ParameterType.double
+        if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
+            return ParameterType.complex_number
         if pstr == 'object':
             return ParameterType.any_object
         if pstr == 'Py_ssize_t':
@@ -236,6 +238,7 @@ class ParameterType(Enum):
     boolean = 'boolean'
     ascii_buffer = 'ascii buffer'
     unsigned_int = 'unsigned integer'
+    complex_number = 'complex number'
 
     def __str__(self):
         return self.value
@@ -247,6 +250,8 @@ class ParameterType(Enum):
             return '1'
         if ptype == ParameterType.unsigned_int:
             return '1'
+        if ptype == ParameterType.complex_number:
+            return 'complex(1.0, -1.0)'
         if ptype == ParameterType.any_object:
             # TODO: anything better?
             return '()'
