@@ -208,6 +208,8 @@ class TargetFinder:
             return ParameterType.byte_like_object
         if pstr == 'int':
             return ParameterType.integer
+        if pstr == 'long':
+            return ParameterType.long
         if pstr == 'double':
             return ParameterType.double
         if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
@@ -236,6 +238,7 @@ class ParameterType(Enum):
     unknown = 'unknown'
     byte_like_object = 'byte-like object'
     integer = 'integer'
+    long = 'long'
     any_object = 'object'
     ssize_t = 'ssize_t'
     double = 'double'
@@ -255,6 +258,8 @@ class ParameterType(Enum):
         if ptype == ParameterType.integer:
             return '1'
         if ptype == ParameterType.unsigned_int:
+            return '1'
+        if ptype == ParameterType.long:
             return '1'
         if ptype == ParameterType.complex_number:
             return 'complex(1.0, -1.0)'
