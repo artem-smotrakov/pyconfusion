@@ -310,7 +310,7 @@ class ParameterType(Enum):
             return '4.2'
         if ptype == ParameterType.boolean:
             return 'True'
-        if ptype == 'string':
+        if ptype == ParameterType.string:
             return '\'string\''
         if ptype == ParameterType.ascii_buffer:
             return '\'ascii\''
@@ -324,7 +324,7 @@ class ParameterType(Enum):
             return '()'
 
         # TODO: anything better?
-        return '()'
+        return '(1, 2, 3)'
 
 class FunctionCaller:
 
