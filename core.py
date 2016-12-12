@@ -188,23 +188,31 @@ class TargetFinder:
         return targets
 
     def extract_parameter_type(self, line):
-        parameter_str = line.strip()
-        index = parameter_str.find(':')
+        pstr = line.strip()
+        index = pstr.find(':')
         if index <= 0: return ParameterType.unknown
-        parameter_str = parameter_str[index+1:]
-        index = parameter_str.find(' ')
+        pstr = pstr[index+1:]
+        index = pstr.find(' ')
         if index > 0:
-            parameter_str = parameter_str[:index]
-        parameter_str = parameter_str.strip()
-        if parameter_str == 'Py_buffer':
+            pstr = pstr[:index]
+        pstr = pstr.strip()
+
+        # check if there is a default value
+        # TODO: use default value while fuzzing
+        index = pstr.find('=')
+        if index >= 0:
+            pstr = pstr[:index]
+            pstr = pstr.strip()
+
+        if pstr == 'Py_buffer':
             return ParameterType.byte_like_object
-        if parameter_str == 'int':
+        if pstr == 'int':
             return ParameterType.integer
-        if parameter_str == 'double':
+        if pstr == 'double':
             return ParameterType.double
-        if parameter_str == 'object':
+        if pstr == 'object':
             return ParameterType.any_object
-        if parameter_str == 'Py_ssize_t':
+        if pstr == 'Py_ssize_t':
             return ParameterType.ssize_t
 
         return ParameterType.unknown
