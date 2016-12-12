@@ -219,6 +219,8 @@ class TargetFinder:
             return ParameterType.byte_like_object
         if pstr == 'long':
             return ParameterType.long
+        if pstr.startswith('unsigned_long(bitwise'):
+            return ParameterType.unsigned_long
         if pstr == 'double':
             return ParameterType.double
         if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
@@ -237,7 +239,7 @@ class TargetFinder:
             return ParameterType.string
         if pstr == 'ascii_buffer':
             return ParameterType.ascii_buffer
-        if pstr == 'unicode':
+        if pstr == 'unicode' or pstr == 'Py_UNICODE':
             return ParameterType.unicode_buffer
         if 'unsigned_int' in pstr:
             return ParameterType.unsigned_int
@@ -255,6 +257,8 @@ class TargetFinder:
             return ParameterType.uid_t
         if pstr == 'gid_t':
             return ParameterType.gid_t
+        if pstr == 'FSConverter':
+            return ParameterType.FSConverter
 
         self.log('warning: unexpected type string: ' + pstr)
         return ParameterType.unknown
@@ -301,6 +305,7 @@ class ParameterType(Enum):
     byte_like_object = 'byte-like object'
     integer = 'integer'
     long = 'long'
+    unsigned_long = 'unsigned long'
     any_object = 'object'
     ssize_t = 'ssize_t'
     double = 'double'
@@ -317,6 +322,7 @@ class ParameterType(Enum):
     file_descriptor = 'file descriptor'
     uid_t = 'uid'
     gid_t = 'gid'
+    FSConverter = 'FSConverter'
 
     def __str__(self):
         return self.value
@@ -329,6 +335,8 @@ class ParameterType(Enum):
         if ptype == ParameterType.unsigned_int:
             return '1'
         if ptype == ParameterType.long:
+            return '1'
+        if ptype == ParameterType.unsigned_long:
             return '1'
         if ptype == ParameterType.complex_number:
             return 'complex(1.0, -1.0)'
@@ -366,6 +374,9 @@ class ParameterType(Enum):
             return '1001'
         if ptype == ParameterType.gid_t:
             return '1002'
+        if ptype == ParameterType.FSConverter:
+            # TODO: anything better?
+            return '\'ls\''
 
         # TODO: anything better?
         return '(1, 2, 3)'
