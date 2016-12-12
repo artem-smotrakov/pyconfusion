@@ -202,6 +202,8 @@ class TargetFinder:
             return ParameterType.integer
         if parameter_str == 'object':
             return ParameterType.any_object
+        if parameter_str == 'Py_ssize_t':
+            return ParameterType.ssize_t
 
         return ParameterType.unknown
 
@@ -213,18 +215,21 @@ class ParameterType(Enum):
     byte_like_object = 'byte-like object'
     integer = 'integer'
     any_object = 'object'
+    ssize_t = 'ssize_t'
 
     def __str__(self):
         return self.value
 
-    def default_value(parameter_type):
-        if parameter_type == ParameterType.byte_like_object:
+    def default_value(ptype):
+        if ptype == ParameterType.byte_like_object:
             return 'bytes()'
-        if parameter_type == ParameterType.integer:
+        if ptype == ParameterType.integer:
             return '42'
-        if parameter_type == ParameterType.any_object:
+        if ptype == ParameterType.any_object:
             # TODO: anything better?
             return '()'
+        if ptype == ParameterType.ssize_t:
+            return '1'
 
         # TODO: anything better?
         return '()'
