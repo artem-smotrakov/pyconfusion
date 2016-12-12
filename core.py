@@ -200,27 +200,32 @@ class TargetFinder:
         # check if there is a default value
         # TODO: use default value while fuzzing
         index = pstr.rfind('=')
+        default_value = None
         if index >= 0:
             pstr = pstr[:index]
             pstr = pstr.strip()
+            default_value = pstr[index+1:]
+            default_value = default_value.strip()
 
-        if pstr == 'Py_buffer':
+        if pstr == 'Py_buffer' or 'Py_buffer(accept' in pstr:
             return ParameterType.byte_like_object
-        if pstr == 'int':
-            return ParameterType.integer
         if pstr == 'long':
             return ParameterType.long
         if pstr == 'double':
             return ParameterType.double
         if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
             return ParameterType.complex_number
-        if pstr == 'object' or 'object(c_default=' in pstr:
+        if self.is_any_object(pstr):
             return ParameterType.any_object
-        if pstr == 'Py_ssize_t':
+        if self.is_ssize_t(pstr):
             return ParameterType.ssize_t
-        if pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")':
+        if pstr == 'bool':
             return ParameterType.boolean
-        if pstr.startswith('str(accept='):
+        if self.is_boolean(pstr, default_value):
+            return ParameterType.boolean
+        if self.is_int(pstr):
+            return ParameterType.integer
+        if self.is_string(pstr):
             return ParameterType.string
         if pstr == 'ascii_buffer':
             return ParameterType.ascii_buffer
@@ -233,7 +238,34 @@ class TargetFinder:
         if 'lzma_vli' in pstr:
             return ParameterType.lzma_vli
 
+        self.log('warning: unexpected type string: ' + pstr)
         return ParameterType.unknown
+
+    def is_string(self, pstr):
+        return (pstr == 'str'
+                or pstr.startswith('str(accept')
+                or pstr.startswith('str(c_default'))
+
+    def is_int(self, pstr):
+        return (pstr == 'int'
+                or pstr.startswith('int(c_default')
+                or pstr.startswith('int(accept'))
+
+    def is_boolean(self, pstr, default_value):
+        return ((pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")')
+                and (default_value == 'True' or default_value == 'False'))
+
+    def is_ssize_t(self, pstr):
+        return (pstr == 'Py_ssize_t'
+                or pstr == 'ssize_t'
+                or pstr.startswith('ssize_t(c_default')
+                or pstr.startswith('Py_ssize_t(c_default'))
+
+    def is_any_object(self, pstr):
+        return (pstr == 'object'
+                or pstr.startswith('object(c_default')
+                or pstr.startswith('object(converter')
+                or pstr.startswith('object(subclass_of'))
 
     def log(self, message):
         print_with_prefix('TargetFinder', message)
