@@ -245,9 +245,27 @@ class TargetFinder:
             return ParameterType.lzma_filter
         if 'lzma_vli' in pstr:
             return ParameterType.lzma_vli
+        if self.is_path_t(pstr):
+            return ParameterType.path_t
+        if self.is_dir_fd(pstr):
+            return ParameterType.dir_fd
+        if pstr == 'fildes':
+            return ParameterType.file_descriptor
+        if pstr == 'uid_t':
+            return ParameterType.uid_t
+        if pstr == 'gid_t':
+            return ParameterType.gid_t
 
         self.log('warning: unexpected type string: ' + pstr)
         return ParameterType.unknown
+
+    def is_dir_fd(self, pstr):
+        return (pstr == 'dir_fd' or pstr.startswith('dir_fd('))
+
+    def is_path_t(self, pstr):
+        return (pstr == 'path_t'
+                or pstr.startswith('path_t(allow_fd')
+                or pstr.startswith('path_t(nullable'))
 
     def is_string(self, pstr):
         return (pstr == 'str'
@@ -294,6 +312,11 @@ class ParameterType(Enum):
     complex_number = 'complex number'
     lzma_filter = 'lzma_filter'
     lzma_vli = 'lzma_vli'
+    path_t = 'path-like object'
+    dir_fd = 'dir_fd'
+    file_descriptor = 'file descriptor'
+    uid_t = 'uid'
+    gid_t = 'gid'
 
     def __str__(self):
         return self.value
@@ -330,6 +353,19 @@ class ParameterType(Enum):
         if ptype == ParameterType.lzma_vli:
             # TODO: anything better?
             return '()'
+        if ptype == ParameterType.path_t:
+            # TODO: should it create a temp file instead of using /tmp here?
+            return '/tmp'
+        if ptype == ParameterType.dir_fd:
+            # TODO: anything better?
+            return 'rootfd'
+        if ptype == ParameterType.file_descriptor:
+            # TODO: anything better?
+            return 'None'
+        if ptype == ParameterType.uid_t:
+            return '1001'
+        if ptype == ParameterType.gid_t:
+            return '1002'
 
         # TODO: anything better?
         return '(1, 2, 3)'
