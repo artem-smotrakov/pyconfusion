@@ -228,6 +228,10 @@ class TargetFinder:
             return ParameterType.unicode_buffer
         if 'unsigned_int' in pstr:
             return ParameterType.unsigned_int
+        if 'lzma_filter' in pstr:
+            return ParameterType.lzma_filter
+        if 'lzma_vli' in pstr:
+            return ParameterType.lzma_vli
 
         return ParameterType.unknown
 
@@ -248,6 +252,8 @@ class ParameterType(Enum):
     unicode_buffer = 'unicode buffer'
     unsigned_int = 'unsigned integer'
     complex_number = 'complex number'
+    lzma_filter = 'lzma_filter'
+    lzma_vli = 'lzma_vli'
 
     def __str__(self):
         return self.value
@@ -278,6 +284,12 @@ class ParameterType(Enum):
             return '\'ascii\''
         if ptype == ParameterType.unicode_buffer:
             return '\'unicode\''
+        if ptype == ParameterType.lzma_filter:
+            # TODO: anything better?
+            return '()'
+        if ptype == ParameterType.lzma_vli:
+            # TODO: anything better?
+            return '()'
 
         # TODO: anything better?
         return '()'
