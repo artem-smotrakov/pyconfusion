@@ -215,6 +215,7 @@ class TargetFinder:
             default_value = pstr[index+1:]
             default_value = default_value.strip()
 
+        # TODO: get rid of these terrible ifs (and also see below)
         if pstr == 'Py_buffer' or 'Py_buffer(accept' in pstr:
             return ParameterType.byte_like_object
         if pstr == 'long':
@@ -259,6 +260,10 @@ class TargetFinder:
             return ParameterType.gid_t
         if pstr == 'FSConverter':
             return ParameterType.FSConverter
+        if pstr == 'pid_t':
+            return ParameterType.pid_t
+        if pstr == 'sched_param':
+            return ParameterType.sched_param
 
         self.log('warning: unexpected type string: ' + pstr)
         return ParameterType.unknown
@@ -323,6 +328,8 @@ class ParameterType(Enum):
     uid_t = 'uid'
     gid_t = 'gid'
     FSConverter = 'FSConverter'
+    pid_t = 'process id'
+    sched_param = 'sched_param'
 
     def __str__(self):
         return self.value
@@ -377,6 +384,11 @@ class ParameterType(Enum):
         if ptype == ParameterType.FSConverter:
             # TODO: anything better?
             return '\'ls\''
+        if ptype == ParameterType.pid_t:
+            return '1234'
+        if ptype == ParameterType.sched_param:
+            # TODO: return os.sched_param instance
+            return 'None'
 
         # TODO: anything better?
         return '(1, 2, 3)'
