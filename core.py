@@ -240,7 +240,7 @@ class TargetFinder:
             return ParameterType.string
         if pstr == 'ascii_buffer':
             return ParameterType.ascii_buffer
-        if pstr == 'unicode' or pstr == 'Py_UNICODE':
+        if self.is_unicode(pstr):
             return ParameterType.unicode_buffer
         if 'unsigned_int' in pstr:
             return ParameterType.unsigned_int
@@ -260,15 +260,34 @@ class TargetFinder:
             return ParameterType.gid_t
         if pstr == 'FSConverter':
             return ParameterType.FSConverter
-        if pstr == 'pid_t':
+        if pstr == 'pid_t' or pstr == 'id_t':
             return ParameterType.pid_t
         if pstr == 'sched_param':
             return ParameterType.sched_param
         if pstr == 'idtype_t':
             return ParameterType.idtype_t
+        if pstr == 'intptr_t':
+            return ParameterType.intptr_t
+        if pstr == 'Py_off_t':
+            return ParameterType.off_t
+        if pstr == 'dev_t':
+            return ParameterType.dev_t
+        if pstr == 'path_confname':
+            return ParameterType.path_confname
+        if pstr == 'confstr_confname':
+            return ParameterType.confstr_confname
+        if pstr == 'sysconf_confname':
+            return ParameterType.sysconf_confname
+        if pstr == 'io_ssize_t':
+            return ParameterType.io_ssize_t
 
         self.log('warning: unexpected type string: ' + pstr)
         return ParameterType.unknown
+
+    def is_unicode(self, pstr):
+        return (pstr == 'unicode'
+                or pstr == 'Py_UNICODE'
+                or pstr.startswith('Py_UNICODE(zeroes'))
 
     def is_dir_fd(self, pstr):
         return (pstr == 'dir_fd' or pstr.startswith('dir_fd('))
@@ -286,7 +305,9 @@ class TargetFinder:
     def is_int(self, pstr):
         return (pstr == 'int'
                 or pstr.startswith('int(c_default')
-                or pstr.startswith('int(accept'))
+                or pstr.startswith('int(accept')
+                or pstr.startswith('int(py_default')
+                or pstr.startswith('int(type'))
 
     def is_boolean(self, pstr, default_value):
         return ((pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")')
@@ -302,7 +323,9 @@ class TargetFinder:
         return (pstr == 'object'
                 or pstr.startswith('object(c_default')
                 or pstr.startswith('object(converter')
-                or pstr.startswith('object(subclass_of'))
+                or pstr.startswith('object(subclass_of')
+                or pstr.startswith('object(type')
+                or pstr == '\'O\'')
 
     def log(self, message):
         print_with_prefix('TargetFinder', message)
@@ -333,6 +356,13 @@ class ParameterType(Enum):
     pid_t = 'process id'
     sched_param = 'sched_param'
     idtype_t = 'idtype_t'
+    intptr_t = 'intptr_t'
+    off_t = 'offset'
+    dev_t = 'device'
+    path_confname = 'path_confname'
+    confstr_confname = 'confstr_confname'
+    sysconf_confname = 'sysconf_confname'
+    io_ssize_t = 'io_ssize_t'
 
     def __str__(self):
         return self.value
@@ -394,6 +424,25 @@ class ParameterType(Enum):
             return 'None'
         if ptype == ParameterType.idtype_t:
             return 'P_ALL'
+        if ptype == ParameterType.intptr_t:
+            return '2345'
+        if ptype == ParameterType.off_t:
+            return '42'
+        if ptype == ParameterType.dev_t:
+            # TODO: use os.makedev
+            return 'None'
+        if ptype == ParameterType.path_confname:
+            # TODO: anything better?
+            return 'test'
+        if ptype == ParameterType.confstr_confname:
+            # TODO: anyting better?
+            return 'test'
+        if ptype == ParameterType.sysconf_confname:
+            # TODO: anything better?
+            return 'test'
+        if ptype == ParameterType.io_ssize_t:
+            # TODO: anyting better?
+            return '-1'
 
         # TODO: anything better?
         return '(1, 2, 3)'
