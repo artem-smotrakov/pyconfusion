@@ -264,6 +264,8 @@ class TargetFinder:
             return ParameterType.pid_t
         if pstr == 'sched_param':
             return ParameterType.sched_param
+        if pstr == 'idtype_t':
+            return ParameterType.idtype_t
 
         self.log('warning: unexpected type string: ' + pstr)
         return ParameterType.unknown
@@ -330,6 +332,7 @@ class ParameterType(Enum):
     FSConverter = 'FSConverter'
     pid_t = 'process id'
     sched_param = 'sched_param'
+    idtype_t = 'idtype_t'
 
     def __str__(self):
         return self.value
@@ -389,6 +392,8 @@ class ParameterType(Enum):
         if ptype == ParameterType.sched_param:
             # TODO: return os.sched_param instance
             return 'None'
+        if ptype == ParameterType.idtype_t:
+            return 'P_ALL'
 
         # TODO: anything better?
         return '(1, 2, 3)'
