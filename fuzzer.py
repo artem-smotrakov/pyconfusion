@@ -51,10 +51,7 @@ class FunctionFuzzer:
         if self.check_correct_parameter_type():
             self.log('start fuzzing')
         else:
-            self.log('couldn\' call function successfully, skip fuzzing')
             return
-
-
 
         arg_number = 1
         while arg_number <= self.function.number_of_parameters():
@@ -92,12 +89,13 @@ class FunctionFuzzer:
             success = True
         except TypeError as err:
             self.log('warning: unexpected TypeError exception: {0}'.format(err))
-        except ValueError as err:
-            self.log('warning: unexpected ValueError exception: {0}'.format(err))
+            self.log('skip fuzzing')
         except AttributeError as err:
             self.log('warning: unexpected AttributeError exception: {0}'.format(err))
+            self.log('looks like this API doesn\'t exist, quit')
         except ModuleNotFoundError as err:
             self.log('warning: unexpected ModuleNotFoundError exception: {0}'.format(err))
+            self.log('looks like this module doesn\'t exist, quit')
         except Exception as err:
             # any other exception is considered as extected
             self.log('expected exception {0}: {1}'.format(type(err), err))
