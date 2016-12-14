@@ -74,7 +74,22 @@ class FunctionFuzzer:
             arg_number = arg_number + 1
 
     def run_hard_fuzzing(self):
-        raise Exception('Not implemented yet')
+        caller = FunctionCaller(self.function)
+        self.fuzz_hard(caller, 1)
+
+    def fuzz_hard(self, caller, current_arg_number):
+        if current_arg_number == caller.function.number_of_parameters():
+            for value in FunctionFuzzer.values:
+                caller.set_parameter_value(current_arg_number, value)
+                try:
+                    caller.call()
+                    self.log('wow, it succeded')
+                except Exception as err:
+                    self.log('exception {0}: {1}'.format(type(err), err))
+        else:
+            for value in FunctionFuzzer.values:
+                caller.set_parameter_value(current_arg_number, value)
+                self.fuzz_hard(caller, current_arg_number + 1)
 
     # check if parameter types are correct
     # it tries to call specified function with correct values of its parameter types
