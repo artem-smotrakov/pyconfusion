@@ -20,13 +20,13 @@ class Task:
         return self.args[name]
 
     def run(self):
-        if self.args['mode'] == 'targets':
+        if self.args['command'] == 'targets':
             self.search_targets()
-        elif self.args['mode'] == 'fuzzer':
+        elif self.args['command'] == 'fuzzer':
             targets = self.search_targets()
             self.fuzz(targets)
         else:
-            raise Exception('Unknown mode: ' + self.args['mode'])
+            raise Exception('Unknown command: ' + self.args['command'])
 
     def search_targets(self):
         if self.args['src'] == None:
@@ -41,7 +41,7 @@ class Task:
 
             # TODO: support fuzzing methods
             if isinstance(target, TargetFunction):
-                FunctionFuzzer(target).run()
+                FunctionFuzzer(target).run(self.args['mode'])
 
     def match_filter(self, target):
         # check if filter was specified
@@ -52,7 +52,8 @@ class Task:
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',  help='path to sources', default='./')
-parser.add_argument('--mode', help='what do you want to do?', choices=['targets', 'fuzzer'], default='targets')
+parser.add_argument('--command', help='what do you want to do?', choices=['targets', 'fuzzer'], default='targets')
+parser.add_argument('--mode', help='how do you want to do?', choices=['light', 'hard'], default='light')
 parser.add_argument('--filter',  help='target filter for fuzzer', default='')
 
 # create task

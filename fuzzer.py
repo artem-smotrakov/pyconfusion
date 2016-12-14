@@ -17,7 +17,7 @@ class FunctionFuzzer:
     def __init__(self, function):
         self.function = function
 
-    def run(self):
+    def run(self, mode = 'light'):
         self.log('try to fuzz function: ' + self.function.name)
         self.log('sources: ' + self.function.filename)
 
@@ -50,11 +50,17 @@ class FunctionFuzzer:
         # this approach may help us to pass type checks of some parameters,
         # and reach more code in the target function
 
-        if self.check_correct_parameter_type():
-            self.log('start fuzzing')
-        else:
+        if not self.check_correct_parameter_type():
             return
 
+        if mode == 'light':
+            self.run_light_fuzzing()
+        elif mode == 'hard':
+            self.run_hard_fuzzing()
+        else:
+            raise Exception('Unknown fuzzing mode: ' + mode)
+
+    def run_light_fuzzing(self):
         arg_number = 1
         while arg_number <= self.function.number_of_parameters():
             for value in FunctionFuzzer.values:
@@ -66,6 +72,9 @@ class FunctionFuzzer:
                 except Exception as err:
                     self.log('exception {0}: {1}'.format(type(err), err))
             arg_number = arg_number + 1
+
+    def run_hard_fuzzing(self):
+        raise Exception('Not implemented yet')
 
     # check if parameter types are correct
     # it tries to call specified function with correct values of its parameter types
