@@ -5,12 +5,14 @@ import os
 import core
 
 from core import ParameterType
+from core import ParameterValue
 from core import FunctionCaller
 
 class FunctionFuzzer:
 
     values = ('42', '42.3', 'True', 'False', '()', '[]', '{}',
-              'bytes()', 'bytearray()', '\'ololo\'', 'frozenset()', 'set()')
+              'bytes()', 'bytearray()', '\'ololo\'', 'frozenset()', 'set()',
+              ParameterValue('A()', 'class A: pass'))
 
     def __init__(self, function):
         self.function = function

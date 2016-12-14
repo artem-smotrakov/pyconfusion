@@ -4,6 +4,7 @@ import textwrap
 import os
 
 from enum import Enum
+from string import Template
 
 # print out a message with prefix
 def print_with_prefix(prefix, message):
@@ -447,7 +448,20 @@ class ParameterType(Enum):
         # TODO: anything better?
         return '(1, 2, 3)'
 
+class ParameterValue:
+
+    def __init__(self, value, extra = '', imports = ''):
+        self.value = value
+        self.extra = extra
+        self.imports = imports
+
 class FunctionCaller:
+
+    basic_template = """
+$imports
+$extra
+$parameter_definitions
+$function_name($function_arguments) """
 
     def __init__(self, function):
         self.function = function
@@ -460,20 +474,35 @@ class FunctionCaller:
         if self.function.number_of_parameters() != len(self.parameter_values):
             raise Exception('number of parameters is not equal to number of values')
 
-        self.code = 'import ' + self.function.module + '\n'
-        parameters = ''
+        imports = list()
+        extra = list()
+        parameter_definitions = list()
+        function_arguments = list()
+
+        imports.append('import ' + self.function.module)
+
         arg_number = 1
         for parameter_type in self.function.parameter_types:
-            parameter_name = 'p' + str(arg_number)
             value = self.parameter_values[arg_number-1]
-            self.code += '{0:s} = {1:s}\n'.format(parameter_name, value)
-            if arg_number == self.function.number_of_parameters():
-                parameters += parameter_name
+            name = 'p' + str(arg_number)
+
+            if type(value) is ParameterValue:
+                imports.append(value.imports)
+                extra.append(value.extra)
+                pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
-                parameters += parameter_name + ', '
+                pstr = '{0:s} = {1:s}\n'.format(name, value)
+
+            parameter_definitions.append(pstr)
+            function_arguments.append(name)
             arg_number = arg_number + 1
 
-        self.code += '{0:s}({1:s})\n'.format(self.function.name, parameters)
+        template = Template(FunctionCaller.basic_template)
+        self.code = template.substitute(imports = ''.join(imports),
+                                        extra = ''.join(extra),
+                                        parameter_definitions = ''.join(parameter_definitions),
+                                        function_name=self.function.name,
+                                        function_arguments = ', '.join(function_arguments))
 
     def set_parameter_value(self, arg_number, value):
         self.parameter_values[arg_number - 1] = value
