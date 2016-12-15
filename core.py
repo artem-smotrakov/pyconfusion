@@ -474,12 +474,12 @@ $function_name($function_arguments) """
         if self.function.number_of_parameters() != len(self.parameter_values):
             raise Exception('number of parameters is not equal to number of values')
 
-        imports = list()
-        extra = list()
-        parameter_definitions = list()
-        function_arguments = list()
+        self.imports = list()
+        self.extra = list()
+        self.parameter_definitions = list()
+        self.function_arguments = list()
 
-        imports.append('import ' + self.function.module)
+        self.imports.append('import ' + self.function.module)
 
         arg_number = 1
         for parameter_type in self.function.parameter_types:
@@ -487,25 +487,27 @@ $function_name($function_arguments) """
             name = 'p' + str(arg_number)
 
             if type(value) is ParameterValue:
-                imports.append(value.imports)
-                extra.append(value.extra)
+                self.imports.append(value.imports)
+                self.extra.append(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
                 pstr = '{0:s} = {1:s}\n'.format(name, value)
 
-            parameter_definitions.append(pstr)
-            function_arguments.append(name)
+            self.parameter_definitions.append(pstr)
+            self.function_arguments.append(name)
             arg_number = arg_number + 1
 
         template = Template(FunctionCaller.basic_template)
-        self.code = template.substitute(imports = ''.join(imports),
-                                        extra = ''.join(extra),
-                                        parameter_definitions = ''.join(parameter_definitions),
-                                        function_name=self.function.name,
-                                        function_arguments = ', '.join(function_arguments))
+        self.code = template.substitute(imports = ''.join(self.imports),
+                                        extra = ''.join(self.extra),
+                                        parameter_definitions = ''.join(self.parameter_definitions),
+                                        function_name = self.function.name,
+                                        function_arguments = ', '.join(self.function_arguments))
 
     def set_parameter_value(self, arg_number, value):
         self.parameter_values[arg_number - 1] = value
+
+        # TODO: can it be called in call()
         self.prepare()
 
     def call(self):
@@ -514,6 +516,45 @@ $function_name($function_arguments) """
 
     def log(self, message):
         print_with_prefix('FunctionCaller', message)
+
+class ConstructorCaller:
+
+    basic_template = """
+$imports
+$extra
+$parameter_definitions
+object = $class_name($constructor_arguments) """
+
+    def __init__(self, clazz):
+        self.clazz = clazz
+
+        self.constructor = clazz.get_constructor()
+        if self.constructor == None:
+            raise Exception('couldn\'t find a constructor of class ' + clazz.name)
+
+        self.caller = FunctionCaller(self.constructor)
+        self.prepare()
+
+    def prepare(self):
+        self.caller.prepare()
+
+        template = Template(ConstructorCaller.basic_template)
+        self.code = template.substitute(imports = ''.join(self.caller.imports),
+                                        extra = ''.join(self.caller.extra),
+                                        parameter_definitions = ''.join(self.caller.parameter_definitions),
+                                        class_name = self.clazz.name,
+                                        constructor_arguments = ', '.join(self.caller.function_arguments))
+
+    def set_parameter_value(self, arg_number, value):
+        self.caller.set_parameter_value(arg_number, value)
+
+    def call(self):
+        self.prepare()
+        self.log('run the following code:\n' + self.code)
+        exec(self.code)
+
+    def log(self, message):
+        print_with_prefix('ConstructorCaller', message)
 
 class TargetFunction:
 
@@ -544,7 +585,7 @@ class TargetClass:
         if name in self.methods:
             raise Exception('Method already exists: ' + name)
 
-        method = TargetMethod(name)
+        method = TargetMethod(name, self.module)
         self.methods[name] = method
 
         return method
@@ -552,10 +593,21 @@ class TargetClass:
     def fullname(self):
         return self.name
 
+    def get_constructor(self):
+        for method_name in self.methods:
+            if self.methods[method_name].name == '__init__':
+                return self.methods[method_name]
+
+        return None
+
+    def has_constructor(self):
+        return self.get_constructor() != None
+
 class TargetMethod:
 
-    def __init__(self, name):
-        self. name = name
+    def __init__(self, name, module):
+        self.name = name
+        self.module = module
         self.parameter_types = []
 
     def number_of_parameters(self):
