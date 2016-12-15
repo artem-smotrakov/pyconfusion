@@ -175,8 +175,8 @@ class ClassFuzzer:
             self.log('successfully created an instance of ' + self.clazz.name)
             return caller
         except Exception as err:
-            self.log('warning: couldn\'t create an instance of {0:s}'
-                     .format(self.clazz.name))
+            self.log('warning: exception: {0}'.format(err))
+            self.log('couldn\'t create an instance of {0:s}'.format(self.clazz.name))
             self.log('skip fuzzing')
             return None
 
