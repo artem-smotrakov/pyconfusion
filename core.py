@@ -48,7 +48,7 @@ class TargetFinder:
         for root, dirs, files in os.walk(path):
             for file in files:
                 # TODO: should it look for .h files as well?
-                if file.endswith(".c"):
+                if file.endswith('.c') or file.endswith('.h'):
                     filename = os.path.join(root, file)
                     result.append(filename)
 
@@ -121,8 +121,9 @@ class TargetFinder:
 
                      # at this point we should have found a module name
                     if module is None:
-                        self.log('error while parsing line: ' + line)
-                        raise Exception('No module name found')
+                        self.log('warning: no module found, line: ' + line)
+                        self.log('skip file')
+                        return []
 
                     # check if we found a class declaration
                     if line.startswith('class '):
