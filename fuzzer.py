@@ -177,6 +177,8 @@ class ClassFuzzer:
     def run_light_fuzzing(self, constructor_caller):
         self.log('run light fuzzing for class: ' + self.clazz.name)
         for method_name in self.clazz.methods:
+            if method_name == '__init__': continue
+
             method = self.clazz.methods[method_name]
             self.log('try to fuzz method: ' + method.name)
 
@@ -199,6 +201,8 @@ class ClassFuzzer:
     def run_hard_fuzzing(self, constructor_caller):
         self.log('run hard fuzzing for class: ' + self.clazz.name)
         for method_name in self.clazz.methods:
+            if method_name == '__init__': continue
+
             method = self.clazz.methods[method_name]
             self.log('try to fuzz method: ' + method.name)
 
