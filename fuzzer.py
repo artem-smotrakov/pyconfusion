@@ -198,7 +198,30 @@ class ClassFuzzer:
 
     def run_hard_fuzzing(self, constructor_caller):
         self.log('run hard fuzzing for class: ' + self.clazz.name)
-        raise Exception('Not implemented yet')
+        for method_name in self.clazz.methods:
+            method = self.clazz.methods[method_name]
+            self.log('try to fuzz method: ' + method.name)
+
+            if method.number_of_parameters() == 0:
+                self.log('method doesn\'t have parameters, skip')
+                continue
+
+            caller = MethodCaller(method, constructor_caller)
+            self.fuzz_hard(caller, 1)
+
+    def fuzz_hard(self, caller, current_arg_number):
+        if current_arg_number == caller.method.number_of_parameters():
+            for value in fuzzing_values:
+                caller.set_parameter_value(current_arg_number, value)
+                try:
+                    caller.call()
+                    self.log('wow, it succeded')
+                except Exception as err:
+                    self.log('exception {0}: {1}'.format(type(err), err))
+        else:
+            for value in fuzzing_values:
+                caller.set_parameter_value(current_arg_number, value)
+                self.fuzz_hard(caller, current_arg_number + 1)
 
     def log(self, message):
         core.print_with_prefix('ClassFuzzer', message)
