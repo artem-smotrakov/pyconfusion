@@ -461,7 +461,8 @@ class FunctionCaller:
 $imports
 $extra
 $parameter_definitions
-$function_name($function_arguments) """
+$function_name($function_arguments)
+"""
 
     def __init__(self, function):
         self.function = function
@@ -523,7 +524,8 @@ class ConstructorCaller:
 $imports
 $extra
 $parameter_definitions
-object = $class_name($constructor_arguments) """
+object = $class_name($constructor_arguments)
+"""
 
     def __init__(self, clazz):
         self.clazz = clazz
@@ -538,9 +540,18 @@ object = $class_name($constructor_arguments) """
     def prepare(self):
         self.caller.prepare()
 
+        self.imports = self.caller.imports
+        self.extra = self.caller.extra
+
+        self.parameter_definitions = list()
+        self.parameter_definitions.extend(self.caller.parameter_definitions)
+
+        self.constructor_arguments = list()
+        self.constructor_arguments.extend(self.caller.function_arguments)
+
         template = Template(ConstructorCaller.basic_template)
-        self.code = template.substitute(imports = ''.join(self.caller.imports),
-                                        extra = ''.join(self.caller.extra),
+        self.code = template.substitute(imports = ''.join(self.imports),
+                                        extra = ''.join(self.extra),
                                         parameter_definitions = ''.join(self.caller.parameter_definitions),
                                         class_name = self.clazz.name,
                                         constructor_arguments = ', '.join(self.caller.function_arguments))
@@ -555,6 +566,67 @@ object = $class_name($constructor_arguments) """
 
     def log(self, message):
         print_with_prefix('ConstructorCaller', message)
+
+    def classname(self):
+        return self.clazz.name
+
+class MethodCaller:
+
+    basic_template = """
+$imports
+$extra
+$constructor_parameter_definitions
+object = $class_name($constructor_arguments)
+$method_parameter_definitions
+object.$method_name($method_arguments)
+"""
+
+    def __init__(self, method, constructor_caller):
+        self.method = method
+        self.constructor_caller = constructor_caller
+        self.caller = FunctionCaller(method)
+
+        # TODO: does it really need to call it here?
+        self.prepare()
+
+    def prepare(self):
+        self.constructor_caller.prepare()
+        self.caller.prepare()
+
+        self.imports = set()
+        self.imports.update(self.constructor_caller.imports)
+        self.imports.update(self.caller.imports)
+
+        self.extra = list()
+        self.extra.extend(self.constructor_caller.extra)
+        self.extra.extend(self.caller.extra)
+
+        self.constructor_parameter_definitions = self.constructor_caller.parameter_definitions
+        self.constructor_arguments = self.constructor_caller.constructor_arguments
+
+        self.method_parameter_definitions = self.caller.parameter_definitions
+        self.method_arguments = self.caller.function_arguments
+
+        template = Template(MethodCaller.basic_template)
+        self.code = template.substitute(imports = ''.join(self.caller.imports),
+                                        extra = ''.join(self.caller.extra),
+                                        class_name = self.constructor_caller.classname(),
+                                        constructor_parameter_definitions = ''.join(self.constructor_parameter_definitions),
+                                        constructor_arguments = ', '.join(self.constructor_arguments),
+                                        method_name = self.method.name,
+                                        method_parameter_definitions = ''.join(self.method_parameter_definitions),
+                                        method_arguments = ', '.join(self.method_arguments))
+
+    def set_parameter_value(self, arg_number, value):
+        self.caller.set_parameter_value(arg_number, value)
+
+    def call(self):
+        self.prepare()
+        self.log('run the following code:\n' + self.code)
+        exec(self.code)
+
+    def log(self, message):
+        print_with_prefix('MethodCaller', message)
 
 class TargetFunction:
 
