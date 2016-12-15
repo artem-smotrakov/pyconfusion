@@ -176,8 +176,8 @@ class TargetFinder:
 
                     if star_found: continue
 
-                    # assume that a line with description of a parameter looks like '    param: desctiption'
-                    if line.startswith('    ') and ': ' in line:
+                    # assume that a line with description of a parameter looks like '  param: desctiption'
+                    if line.startswith('  ') and ': ' in line:
                         if current_method_or_function == None:
                             self.log('error while parsing line: ' + line)
                             self.log('warning: no function or method found yet')
@@ -678,7 +678,7 @@ class TargetClass:
             if self.methods[method_name].name == '__init__':
                 return self.methods[method_name]
 
-        return None
+        return TargetMethod('__init__', self.module)
 
     def has_constructor(self):
         return self.get_constructor() != None

@@ -161,12 +161,6 @@ class ClassFuzzer:
             raise Exception('Unknown fuzzing mode: ' + mode)
 
     def get_constructor_caller(self):
-        if not self.clazz.has_constructor():
-            # TODO: should it try to use a constructor without parameters
-            self.log('warning: couldn\'t find a constructor of class ' + self.clazz.name)
-            self.log('skip fuzzing')
-            return None
-
         self.log('try to create an instance of ' + self.clazz.name)
 
         caller = ConstructorCaller(self.clazz)
