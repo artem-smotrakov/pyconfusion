@@ -4,9 +4,8 @@ import argparse
 import core
 
 from fuzzer import FunctionFuzzer
+from fuzzer import ClassFuzzer
 from core import *
-
-# TODO: gather info, and print out a summary in the end
 
 # contains fuzzer configuration
 # all parameters can be accessed as attributes
@@ -39,9 +38,11 @@ class Task:
             # check if the line matches specified filter
             if not self.match_filter(target): continue
 
-            # TODO: support fuzzing methods
             if isinstance(target, TargetFunction):
                 FunctionFuzzer(target).run(self.args['mode'])
+
+            if isinstance(target, TargetClass):
+                ClassFuzzer(target).run(self.args['mode'])
 
     def match_filter(self, target):
         # check if filter was specified

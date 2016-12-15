@@ -131,3 +131,22 @@ class FunctionFuzzer:
 
     def log(self, message):
         core.print_with_prefix('FunctionFuzzer', message)
+
+
+class ClassFuzzer:
+
+    def __init__(self, clazz):
+        self.clazz = clazz
+
+    def run(self, mode = 'light'):
+        self.log('try to fuzz class: ' + self.clazz.fullname())
+        self.log('sources: ' + self.clazz.filename)
+
+    def run_light_fuzzing(self):
+        raise Exception('Not implemented yet')
+
+    def run_hard_fuzzing(self):
+        raise Exception('Not implemented yet')
+
+    def log(self, message):
+        core.print_with_prefix('ClassFuzzer', message)
