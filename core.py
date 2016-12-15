@@ -76,6 +76,7 @@ class TargetFinder:
                         raise Exception('Unexpected [clinic input] section')
 
                     state = ParserState.inside_clinic_input
+                    star_found = False
                     continue
 
                 if '[clinic start generated code]' in line:
@@ -167,6 +168,13 @@ class TargetFinder:
 
                             current_method_or_function = TargetFunction(filename, module, name)
                             functions.append(current_method_or_function)
+
+                    # stop if we found keywords
+                    # TODO: try to fuzz keywords
+                    if line.strip() == '*':
+                        star_found = True
+
+                    if star_found: continue
 
                     # assume that a line with description of a parameter looks like '    param: desctiption'
                     if line.startswith('    ') and ': ' in line:
