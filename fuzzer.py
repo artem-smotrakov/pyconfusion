@@ -7,13 +7,14 @@ import core
 from core import ParameterType
 from core import ParameterValue
 from core import FunctionCaller
+from core import MethodCaller
 from core import ConstructorCaller
 
-class FunctionFuzzer:
+fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', 'bytes()',
+                  'bytearray()', '\'ololo\'', 'frozenset()', 'set()',
+                  ParameterValue('A()', 'class A: pass'))
 
-    values = ('42', '42.3', 'True', 'False', '()', '[]', '{}',
-              'bytes()', 'bytearray()', '\'ololo\'', 'frozenset()', 'set()',
-              ParameterValue('A()', 'class A: pass'))
+class FunctionFuzzer:
 
     def __init__(self, function):
         self.function = function
@@ -62,9 +63,10 @@ class FunctionFuzzer:
             raise Exception('Unknown fuzzing mode: ' + mode)
 
     def run_light_fuzzing(self):
+        self.log('run light fuzzing for function: ' + self.function.name)
         arg_number = 1
         while arg_number <= self.function.number_of_parameters():
-            for value in FunctionFuzzer.values:
+            for value in fuzzing_values:
                 caller = FunctionCaller(self.function)
                 caller.set_parameter_value(arg_number, value)
                 try:
@@ -75,12 +77,13 @@ class FunctionFuzzer:
             arg_number = arg_number + 1
 
     def run_hard_fuzzing(self):
+        self.log('run hard fuzzing for function: ' + self.function.name)
         caller = FunctionCaller(self.function)
         self.fuzz_hard(caller, 1)
 
     def fuzz_hard(self, caller, current_arg_number):
         if current_arg_number == caller.function.number_of_parameters():
-            for value in FunctionFuzzer.values:
+            for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
                 try:
                     caller.call()
@@ -88,7 +91,7 @@ class FunctionFuzzer:
                 except Exception as err:
                     self.log('exception {0}: {1}'.format(type(err), err))
         else:
-            for value in FunctionFuzzer.values:
+            for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
                 self.fuzz_hard(caller, current_arg_number + 1)
 
@@ -159,6 +162,7 @@ class ClassFuzzer:
 
     def get_constructor_caller(self):
         if not self.clazz.has_constructor():
+            # TODO: should it try to use a constructor without parameters
             self.log('warning: couldn\'t find a constructor of class ' + self.clazz.name)
             self.log('skip fuzzing')
             return None
@@ -169,6 +173,7 @@ class ClassFuzzer:
         try:
             caller.call()
             self.log('successfully created an instance of ' + self.clazz.name)
+            return caller
         except Exception as err:
             self.log('warning: couldn\'t create an instance of {0:s}'
                      .format(self.clazz.name))
@@ -176,9 +181,29 @@ class ClassFuzzer:
             return None
 
     def run_light_fuzzing(self, constructor_caller):
-        raise Exception('Not implemented yet')
+        self.log('run light fuzzing for class: ' + self.clazz.name)
+        for method_name in self.clazz.methods:
+            method = self.clazz.methods[method_name]
+            self.log('try to fuzz method: ' + method.name)
+
+            if method.number_of_parameters() == 0:
+                self.log('method doesn\'t have parameters, skip')
+                continue
+
+            arg_number = 1
+            while arg_number <= method.number_of_parameters():
+                for value in fuzzing_values:
+                    caller = MethodCaller(method, constructor_caller)
+                    caller.set_parameter_value(arg_number, value)
+                    try:
+                        caller.call()
+                        self.log('wow, it succeded')
+                    except Exception as err:
+                        self.log('exception {0}: {1}'.format(type(err), err))
+                arg_number = arg_number + 1
 
     def run_hard_fuzzing(self, constructor_caller):
+        self.log('run hard fuzzing for class: ' + self.clazz.name)
         raise Exception('Not implemented yet')
 
     def log(self, message):
