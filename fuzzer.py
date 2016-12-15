@@ -7,6 +7,7 @@ import core
 from core import ParameterType
 from core import ParameterValue
 from core import FunctionCaller
+from core import ConstructorCaller
 
 class FunctionFuzzer:
 
@@ -132,20 +133,52 @@ class FunctionFuzzer:
     def log(self, message):
         core.print_with_prefix('FunctionFuzzer', message)
 
-
 class ClassFuzzer:
 
     def __init__(self, clazz):
         self.clazz = clazz
 
     def run(self, mode = 'light'):
-        self.log('try to fuzz class: ' + self.clazz.fullname())
+        self.log('try to fuzz class: ' + self.clazz.name)
         self.log('sources: ' + self.clazz.filename)
 
-    def run_light_fuzzing(self):
+        # make sure that we can call a constructor,
+        # and get an instance of the class
+        # if we can't, we can't continue fuzzing
+
+        constructor_caller = self.get_constructor_caller()
+        if constructor_caller == None:
+            return
+
+        if mode == 'light':
+            self.run_light_fuzzing(constructor_caller)
+        elif mode == 'hard':
+            self.run_hard_fuzzing(constructor_caller)
+        else:
+            raise Exception('Unknown fuzzing mode: ' + mode)
+
+    def get_constructor_caller(self):
+        if not self.clazz.has_constructor():
+            self.log('warning: couldn\'t find a constructor of class ' + self.clazz.name)
+            self.log('skip fuzzing')
+            return None
+
+        self.log('try to create an instance of ' + self.clazz.name)
+
+        caller = ConstructorCaller(self.clazz)
+        try:
+            caller.call()
+            self.log('successfully created an instance of ' + self.clazz.name)
+        except Exception as err:
+            self.log('warning: couldn\'t create an instance of {0:s}'
+                     .format(self.clazz.name))
+            self.log('skip fuzzing')
+            return None
+
+    def run_light_fuzzing(self, constructor_caller):
         raise Exception('Not implemented yet')
 
-    def run_hard_fuzzing(self):
+    def run_hard_fuzzing(self, constructor_caller):
         raise Exception('Not implemented yet')
 
     def log(self, message):
