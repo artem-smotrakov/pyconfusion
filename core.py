@@ -666,7 +666,7 @@ class TargetClass:
         if name in self.methods:
             raise Exception('Method already exists: ' + name)
 
-        method = TargetMethod(name, self.module)
+        method = TargetMethod(name, self.module, self)
         self.methods[name] = method
 
         return method
@@ -679,16 +679,17 @@ class TargetClass:
             if self.methods[method_name].name == '__init__':
                 return self.methods[method_name]
 
-        return TargetMethod('__init__', self.module)
+        return TargetMethod('__init__', self.module, self)
 
     def has_constructor(self):
         return self.get_constructor() != None
 
 class TargetMethod:
 
-    def __init__(self, name, module):
+    def __init__(self, name, module, clazz):
         self.name = name
         self.module = module
+        self.clazz = clazz
         self.parameter_types = []
 
     def number_of_parameters(self):
@@ -696,3 +697,38 @@ class TargetMethod:
 
     def add_parameter(self, parameter_type):
         self.parameter_types.append(parameter_type)
+
+class TestDump:
+
+    def __init__(self, path):
+        self.path = path
+        self.next_indexes = {}
+
+    def store(self, caller):
+        if self.path == None: return
+
+        key = None
+        if type(caller) == FunctionCaller:
+            key = '{0:s}_{1:s}'.format(caller.function.module, caller.function.name)
+        elif type(caller) == MethodCaller:
+            key = '{0:s}_{1:s}'.format(caller.method.clazz.name, caller.method.name)
+        else:
+            raise Exception('Unknown caller')
+
+        key = key.replace('.', '_')
+
+        next_index = 0
+        if key in self.next_indexes:
+            next_index = self.next_indexes[key]
+
+        fullpath = '{0:s}/{1:s}_{2:d}.py'.format(self.path, key, next_index)
+        next_index += 1
+        self.next_indexes[key] = next_index
+
+        self.log('save code to ' + fullpath)
+
+        with open(fullpath, "w") as text_file:
+            text_file.write(caller.code)
+
+    def log(self, message):
+        print_with_prefix('TestDump', message)

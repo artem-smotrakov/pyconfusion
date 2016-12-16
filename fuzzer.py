@@ -9,6 +9,7 @@ from core import ParameterValue
 from core import FunctionCaller
 from core import MethodCaller
 from core import ConstructorCaller
+from core import TestDump
 
 fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', 'bytes()',
                   'bytearray()', '\'ololo\'', 'frozenset()', 'set()',
@@ -16,8 +17,9 @@ fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', 'bytes()',
 
 class FunctionFuzzer:
 
-    def __init__(self, function):
+    def __init__(self, function, path = None):
         self.function = function
+        self.dump = TestDump(path)
 
     def run(self, mode = 'light'):
         self.log('try to fuzz function: ' + self.function.name)
@@ -69,6 +71,7 @@ class FunctionFuzzer:
             for value in fuzzing_values:
                 caller = FunctionCaller(self.function)
                 caller.set_parameter_value(arg_number, value)
+                self.dump.store(caller)
                 try:
                     caller.call()
                     self.log('wow, it succeded')
@@ -85,6 +88,7 @@ class FunctionFuzzer:
         if current_arg_number == caller.function.number_of_parameters():
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
+                self.dump.store(caller)
                 try:
                     caller.call()
                     self.log('wow, it succeded')
@@ -138,8 +142,9 @@ class FunctionFuzzer:
 
 class ClassFuzzer:
 
-    def __init__(self, clazz):
+    def __init__(self, clazz, path = None):
         self.clazz = clazz
+        self.dump = TestDump(path)
 
     def run(self, mode = 'light'):
         self.log('try to fuzz class: ' + self.clazz.name)
@@ -191,6 +196,7 @@ class ClassFuzzer:
                 for value in fuzzing_values:
                     caller = MethodCaller(method, constructor_caller)
                     caller.set_parameter_value(arg_number, value)
+                    self.dump.store(caller)
                     try:
                         caller.call()
                         self.log('wow, it succeded')
@@ -217,6 +223,7 @@ class ClassFuzzer:
         if current_arg_number == caller.method.number_of_parameters():
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
+                self.dump.store(caller)
                 try:
                     caller.call()
                     self.log('wow, it succeded')

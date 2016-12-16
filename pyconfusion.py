@@ -39,10 +39,10 @@ class Task:
             if not self.match_filter(target): continue
 
             if isinstance(target, TargetFunction):
-                FunctionFuzzer(target).run(self.args['mode'])
+                FunctionFuzzer(target, self.args['out']).run(self.args['mode'])
 
             if isinstance(target, TargetClass):
-                ClassFuzzer(target).run(self.args['mode'])
+                ClassFuzzer(target, self.args['out']).run(self.args['mode'])
 
     def match_filter(self, target):
         # check if filter was specified
@@ -56,6 +56,7 @@ parser.add_argument('--src',  help='path to sources', default='./')
 parser.add_argument('--command', help='what do you want to do?', choices=['targets', 'fuzzer'], default='targets')
 parser.add_argument('--mode', help='how do you want to do?', choices=['light', 'hard'], default='light')
 parser.add_argument('--filter',  help='target filter for fuzzer', default='')
+parser.add_argument('--out', help='path to directory for generated tests')
 
 # create task
 task = Task(parser.parse_args())
