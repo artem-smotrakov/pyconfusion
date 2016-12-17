@@ -12,13 +12,13 @@ do
     echo "run ${TEST}"
     ${PYTHON} ${OPTIONS} ${TEST} > log 2>&1
 
-    if grep "AddressSanitizer" log > /dev/null 2>&1; then
-        echo "ASan found something, game over"
+    if [ $? -eq 139 ]; then
+        echo "Segmentation fault, game over"
         break
     fi
 
-    if grep -i "segmentation fault" log > /dev/null 2>&1; then
-        echo "Segmentation fault, game over"
+    if grep "AddressSanitizer" log > /dev/null 2>&1; then
+        echo "ASan found something, game over"
         break
     fi
 done
