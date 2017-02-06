@@ -587,7 +587,7 @@ $extra
 $constructor_parameter_definitions
 object = $class_name($constructor_arguments)
 $method_parameter_definitions
-object.$method_name($method_arguments)
+r = object.$method_name($method_arguments)
 """
 
     def __init__(self, method, constructor_caller):
@@ -636,6 +636,34 @@ object.$method_name($method_arguments)
 
     def log(self, message):
         print_with_prefix('MethodCaller', message)
+
+class CoroutineChecker:
+
+    template = """
+$base_caller_code
+if not 'throw' in dir(r) and not 'send' in dir(r) and not 'close' in dir(r):
+    raise Exception('not a coroutine')
+"""
+
+    def __init__(self, caller):
+        self.caller = caller
+
+    def prepare(self):
+        self.caller.prepare()
+        template = Template(CoroutineChecker.template)
+        self.code = template.substitute(base_caller_code = self.caller.code)
+
+    def is_coroutine(self):
+        self.prepare()
+        self.log('run the following code (check for a coroutine):\n' + self.code)
+        try:
+            exec(self.code)
+            return True
+        except Exception:
+            return False
+
+    def log(self, message):
+        print_with_prefix('CoroutineChecker', message)
 
 class TargetFunction:
 
