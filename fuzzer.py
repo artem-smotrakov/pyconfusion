@@ -179,6 +179,14 @@ class ClassFuzzer:
             self.log('skip fuzzing')
             return None
 
+    def run_and_dump_code(self, caller):
+        self.dump.store(caller)
+        try:
+            caller.call()
+            self.log('wow, it succeded')
+        except Exception as err:
+            self.log('exception {0}: {1}'.format(type(err), err))
+
     def run_light_fuzzing(self, constructor_caller):
         self.log('run light fuzzing for class: ' + self.clazz.name)
         for method_name in self.clazz.methods:
@@ -188,21 +196,17 @@ class ClassFuzzer:
             self.log('try to fuzz method: ' + method.name)
 
             if method.number_of_parameters() == 0:
-                self.log('method doesn\'t have parameters, skip')
-                continue
-
-            arg_number = 1
-            while arg_number <= method.number_of_parameters():
-                for value in fuzzing_values:
-                    caller = MethodCaller(method, constructor_caller)
-                    caller.set_parameter_value(arg_number, value)
-                    self.dump.store(caller)
-                    try:
-                        caller.call()
-                        self.log('wow, it succeded')
-                    except Exception as err:
-                        self.log('exception {0}: {1}'.format(type(err), err))
-                arg_number = arg_number + 1
+                self.log('method doesn\'t have parameters, just call it')
+                caller = MethodCaller(method, constructor_caller)
+                self.run_and_dump_code(caller)
+            else:
+                arg_number = 1
+                while arg_number <= method.number_of_parameters():
+                    for value in fuzzing_values:
+                        caller = MethodCaller(method, constructor_caller)
+                        caller.set_parameter_value(arg_number, value)
+                        self.run_and_dump_code(caller)
+                    arg_number = arg_number + 1
 
     def run_hard_fuzzing(self, constructor_caller):
         self.log('run hard fuzzing for class: ' + self.clazz.name)
@@ -223,12 +227,7 @@ class ClassFuzzer:
         if current_arg_number == caller.method.number_of_parameters():
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
-                self.dump.store(caller)
-                try:
-                    caller.call()
-                    self.log('wow, it succeded')
-                except Exception as err:
-                    self.log('exception {0}: {1}'.format(type(err), err))
+                self.run_and_dump_code(caller)
         else:
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
