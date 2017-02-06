@@ -10,6 +10,8 @@ from core import FunctionCaller
 from core import MethodCaller
 from core import ConstructorCaller
 from core import TestDump
+from core import CoroutineChecker
+from core import SubsequentMethodCaller
 
 fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', 'bytes()',
                   'bytearray()', '\'ololo\'', 'frozenset()', 'set()',
@@ -140,6 +142,7 @@ class FunctionFuzzer:
     def log(self, message):
         core.print_with_prefix('FunctionFuzzer', message)
 
+# TODO: split it to LightClassFuzzer and HardClassFuzzer
 class ClassFuzzer:
 
     def __init__(self, clazz, path = None):
@@ -187,6 +190,13 @@ class ClassFuzzer:
         except Exception as err:
             self.log('exception {0}: {1}'.format(type(err), err))
 
+    def try_coroutine_fuzzing(self, caller):
+        checker = CoroutineChecker(caller)
+        if checker.is_coroutine():
+            self.log('coroutine found')
+            close_caller = SubsequentMethodCaller(caller, 'close')
+            self.run_and_dump_code(close_caller)
+
     def run_light_fuzzing(self, constructor_caller):
         self.log('run light fuzzing for class: ' + self.clazz.name)
         for method_name in self.clazz.methods:
@@ -199,6 +209,7 @@ class ClassFuzzer:
                 self.log('method doesn\'t have parameters, just call it')
                 caller = MethodCaller(method, constructor_caller)
                 self.run_and_dump_code(caller)
+                self.try_coroutine_fuzzing(caller)
             else:
                 arg_number = 1
                 while arg_number <= method.number_of_parameters():
@@ -216,6 +227,7 @@ class ClassFuzzer:
             method = self.clazz.methods[method_name]
             self.log('try to fuzz method: ' + method.name)
 
+            # TODO: just call the method, and try to run coroutine fuzzing
             if method.number_of_parameters() == 0:
                 self.log('method doesn\'t have parameters, skip')
                 continue
@@ -235,3 +247,25 @@ class ClassFuzzer:
 
     def log(self, message):
         core.print_with_prefix('ClassFuzzer', message)
+
+class LightCoroutineFuzzer:
+
+    def __init__(self, caller):
+        self.caller = caller
+
+    def run(self):
+        raise Exception('not implemented yet')
+
+    def log(self, message):
+        core.print_with_prefix('LightCoroutineFuzzer', message)
+
+class HardCoroutineFuzzer:
+
+    def __init__(self, caller):
+        self.caller = caller
+
+    def run(self):
+        raise Exception('not implemented yet')
+
+    def log(self, message):
+        core.print_with_prefix('HardCoroutineFuzzer', message)
