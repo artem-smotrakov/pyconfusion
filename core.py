@@ -598,15 +598,15 @@ r = object.$method_name($method_arguments)
         # TODO: does it really need to call it here?
         self.prepare()
 
-    def prepare(self):
+    def prepare(self, imports = set(), extra = list()):
         self.constructor_caller.prepare()
         self.caller.prepare()
 
-        self.imports = set()
+        self.imports = imports
         self.imports.update(self.constructor_caller.imports)
         self.imports.update(self.caller.imports)
 
-        self.extra = list()
+        self.extra = extra
         self.extra.extend(self.constructor_caller.extra)
         self.extra.extend(self.caller.extra)
 
@@ -664,6 +664,66 @@ if not 'throw' in dir(r) and not 'send' in dir(r) and not 'close' in dir(r):
 
     def log(self, message):
         print_with_prefix('CoroutineChecker', message)
+
+class SubsequentMethodCaller:
+
+    template = """
+$base_caller_code
+$parameter_definitions
+r.$method_name($method_arguments)
+"""
+
+    def __init__(self, caller, method_name, *parameter_types):
+        self.caller = caller
+        self.method_name = method_name
+        self.parameter_types = parameter_types
+        self.parameter_values = []
+        for parameter_type in parameter_types:
+            self.parameter_values.append(ParameterType.default_value(parameter_type))
+
+    def prepare(self):
+        self.imports = set()
+        self.extra = list()
+        self.parameter_definitions = list()
+        self.method_arguments = list()
+
+        arg_number = 1
+        for parameter_type in self.parameter_types:
+            value = self.parameter_values[arg_number-1]
+            name = 'p' + str(arg_number)
+
+            if type(value) is ParameterValue:
+                self.imports.append(value.imports)
+                self.extra.append(value.extra)
+                pstr = '{0:s} = {1:s}\n'.format(name, value.value)
+            else:
+                pstr = '{0:s} = {1:s}\n'.format(name, value)
+
+            self.parameter_definitions.append(pstr)
+            self.method_arguments.append(name)
+            arg_number = arg_number + 1
+
+        self.caller.prepare(self.imports, self.extra)
+
+        template = Template(SubsequentMethodCaller.template)
+        self.code = template.substitute(base_caller_code = self.caller.code,
+                                        parameter_definitions = ''.join(self.parameter_definitions),
+                                        method_name = self.method_name,
+                                        method_arguments = ', '.join(self.method_arguments))
+
+    def call(self):
+        self.prepare()
+        self.log('run the following code:\n' + self.code)
+        exec(self.code)
+
+    def set_parameter_value(self, arg_number, value):
+        self.parameter_values[arg_number - 1] = value
+        # TODO: can it be called in call()
+        self.prepare()
+
+
+    def log(self, message):
+        print_with_prefix('SubsequentMethodCaller', message)
 
 class TargetFunction:
 
