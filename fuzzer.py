@@ -250,18 +250,24 @@ class LightMethodFuzzer(BaseFuzzer):
         self.fuzz_coroutine = fuzz_coroutine
         self.path = path
 
+    def create_caller(self):
+        return MethodCaller(self.method, self.constructor_caller)
+
+    def get_number_of_parameters(self):
+        return self.method.number_of_parameters()
+
     def run(self):
-        if self.method.number_of_parameters() == 0:
+        if self.get_number_of_parameters() == 0:
             self.log('method doesn\'t have parameters, just call it')
-            caller = MethodCaller(self.method, self.constructor_caller)
+            caller = self.create_caller()
             self.run_and_dump_code(caller)
             if self.fuzz_coroutine:
                 LightCoroutineFuzzer(caller, self.path).run()
         else:
             arg_number = 1
-            while arg_number <= self.method.number_of_parameters():
+            while arg_number <= self.get_number_of_parameters():
                 for value in fuzzing_values:
-                    caller = MethodCaller(self.method, self.constructor_caller)
+                    caller = self.create_caller()
                     caller.set_parameter_value(arg_number, value)
                     self.run_and_dump_code(caller)
                 arg_number = arg_number + 1
@@ -316,6 +322,7 @@ class LightCoroutineFuzzer(BaseFuzzer):
     def __init__(self, caller, path = None):
         super().__init__(path)
         self.caller = caller
+        self.path = path
 
     def run(self):
         checker = CoroutineChecker(self.caller)
@@ -323,6 +330,7 @@ class LightCoroutineFuzzer(BaseFuzzer):
             self.log('coroutine found')
             close_caller = SubsequentMethodCaller(self.caller, 'close')
             self.run_and_dump_code(close_caller)
+            LightSubsequentMethodFuzzer(self.caller, self.path, 'send', ParameterType.any_object).run()
 
     def log(self, message):
         core.print_with_prefix('LightCoroutineFuzzer', message)
@@ -337,3 +345,20 @@ class HardCoroutineFuzzer:
 
     def log(self, message):
         core.print_with_prefix('HardCoroutineFuzzer', message)
+
+class LightSubsequentMethodFuzzer(LightMethodFuzzer):
+
+    def __init__(self, base_caller, path, subsequent_method_name, *parameter_types):
+        super().__init__(base_caller.method, base_caller.constructor_caller, False, path)
+        self.base_caller = base_caller
+        self.subsequent_method_name = subsequent_method_name
+        self.parameter_types = parameter_types
+
+    def create_caller(self):
+        return SubsequentMethodCaller(self.base_caller, self.subsequent_method_name, self.parameter_types)
+
+    def get_number_of_parameters(self):
+        return len(self.parameter_types)
+
+    def log(self, message):
+        core.print_with_prefix('LightSubsequentMethodFuzzer', message)
