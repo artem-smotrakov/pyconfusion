@@ -18,6 +18,7 @@ fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', 'bytes()',
                   'bytearray()', '\'ololo\'', 'frozenset()', 'set()',
                   ParameterValue('A()', 'class A: pass'))
 
+# TODO: split it to two classes for light and hard fuzzing
 class FunctionFuzzer:
 
     def __init__(self, function, path = None):
@@ -247,6 +248,7 @@ class LightMethodFuzzer(BaseFuzzer):
         self.method = method
         self.constructor_caller = constructor_caller
         self.fuzz_coroutine = fuzz_coroutine
+        self.path = path
 
     def run(self):
         if self.method.number_of_parameters() == 0:
@@ -254,7 +256,7 @@ class LightMethodFuzzer(BaseFuzzer):
             caller = MethodCaller(self.method, self.constructor_caller)
             self.run_and_dump_code(caller)
             if self.fuzz_coroutine:
-                self.try_coroutine_fuzzing(caller)
+                LightCoroutineFuzzer(caller, self.path).run()
         else:
             arg_number = 1
             while arg_number <= self.method.number_of_parameters():
@@ -281,15 +283,18 @@ class HardMethodFuzzer(BaseFuzzer):
         self.method = method
         self.constructor_caller = constructor_caller
         self.fuzz_coroutine = fuzz_coroutine
+        self.path = path
 
     def run(self):
-        # TODO: just call the method, and try to run coroutine fuzzing
         if self.method.number_of_parameters() == 0:
-            self.log('method doesn\'t have parameters, skip')
-            return
-
-        caller = MethodCaller(self.method, self.constructor_caller)
-        self.fuzz_hard(caller, 1)
+            self.log('method doesn\'t have parameters, just call it')
+            caller = MethodCaller(self.method, self.constructor_caller)
+            self.run_and_dump_code(caller)
+            if self.fuzz_coroutine:
+                LightCoroutineFuzzer(caller, self.path).run()
+        else:
+            caller = MethodCaller(self.method, self.constructor_caller)
+            self.fuzz_hard(caller, 1)
 
     def fuzz_hard(self, caller, current_arg_number):
         if current_arg_number == caller.method.number_of_parameters():
@@ -305,14 +310,18 @@ class HardMethodFuzzer(BaseFuzzer):
     def log(self, message):
         core.print_with_prefix('HardMethodFuzzer', message)
 
+class LightCoroutineFuzzer(BaseFuzzer):
 
-class LightCoroutineFuzzer:
-
-    def __init__(self, caller):
+    def __init__(self, caller, path = None):
+        super().__init__(path)
         self.caller = caller
 
     def run(self):
-        raise Exception('not implemented yet')
+        checker = CoroutineChecker(self.caller)
+        if checker.is_coroutine():
+            self.log('coroutine found')
+            close_caller = SubsequentMethodCaller(self.caller, 'close')
+            self.run_and_dump_code(close_caller)
 
     def log(self, message):
         core.print_with_prefix('LightCoroutineFuzzer', message)
