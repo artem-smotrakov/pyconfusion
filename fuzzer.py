@@ -301,7 +301,8 @@ class HardMethodFuzzer(BaseFuzzer):
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
                 self.run_and_dump_code(caller)
-                # TODO: check for coroutine fuzzing
+                if self.fuzz_coroutine:
+                    LightCoroutineFuzzer(caller, self.path).run()
         else:
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
