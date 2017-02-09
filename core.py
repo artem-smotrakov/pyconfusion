@@ -290,6 +290,7 @@ class TargetFinder:
             return ParameterType.sysconf_confname
         if pstr == 'io_ssize_t':
             return ParameterType.io_ssize_t
+        # we don't have ParameterType.exception here (should we?)
 
         self.log('warning: unexpected type string: ' + pstr)
         return ParameterType.unknown
@@ -373,6 +374,7 @@ class ParameterType(Enum):
     confstr_confname = 'confstr_confname'
     sysconf_confname = 'sysconf_confname'
     io_ssize_t = 'io_ssize_t'
+    exception = 'exception'
 
     def __str__(self):
         return self.value
@@ -453,6 +455,8 @@ class ParameterType(Enum):
         if ptype == ParameterType.io_ssize_t:
             # TODO: anyting better?
             return '-1'
+        if ptype == ParameterType.exception:
+            return 'Exception()'
 
         # TODO: anything better?
         return '(1, 2, 3)'
@@ -617,8 +621,8 @@ r = object.$method_name($method_arguments)
         self.method_arguments = self.caller.function_arguments
 
         template = Template(MethodCaller.basic_template)
-        self.code = template.substitute(imports = ''.join(self.caller.imports),
-                                        extra = ''.join(self.caller.extra),
+        self.code = template.substitute(imports = ''.join(self.imports),
+                                        extra = ''.join(self.extra),
                                         class_name = self.constructor_caller.classname(),
                                         constructor_parameter_definitions = ''.join(self.constructor_parameter_definitions),
                                         constructor_arguments = ', '.join(self.constructor_arguments),
@@ -673,7 +677,7 @@ $parameter_definitions
 r.$method_name($method_arguments)
 """
 
-    def __init__(self, caller, method_name, *parameter_types):
+    def __init__(self, caller, method_name, parameter_types = []):
         self.caller = caller
         self.method_name = method_name
         self.parameter_types = parameter_types
@@ -875,6 +879,8 @@ class TestDump:
             key = '{0:s}_{1:s}'.format(caller.function.module, caller.function.name)
         elif type(caller) == MethodCaller:
             key = '{0:s}_{1:s}'.format(caller.method.clazz.name, caller.method.name)
+        elif type(caller) == SubsequentMethodCaller:
+            key = '{0:s}_{1:s}_{2:s}'.format(caller.caller.method.clazz.name, caller.caller.method.name, caller.method_name)
         else:
             raise Exception('Unknown caller')
 

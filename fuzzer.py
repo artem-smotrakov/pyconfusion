@@ -330,7 +330,11 @@ class LightCoroutineFuzzer(BaseFuzzer):
             self.log('coroutine found')
             close_caller = SubsequentMethodCaller(self.caller, 'close')
             self.run_and_dump_code(close_caller)
-            LightSubsequentMethodFuzzer(self.caller, self.path, 'send', ParameterType.any_object).run()
+            fuzzer = LightSubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
+            fuzzer.run()
+            fuzzer = LightSubsequentMethodFuzzer(self.caller, self.path, 'throw',
+                                                 [ParameterType.exception, ParameterType.any_object, ParameterType.any_object])
+            fuzzer.run()
 
     def log(self, message):
         core.print_with_prefix('LightCoroutineFuzzer', message)
@@ -348,7 +352,7 @@ class HardCoroutineFuzzer:
 
 class LightSubsequentMethodFuzzer(LightMethodFuzzer):
 
-    def __init__(self, base_caller, path, subsequent_method_name, *parameter_types):
+    def __init__(self, base_caller, path, subsequent_method_name, parameter_types = []):
         super().__init__(base_caller.method, base_caller.constructor_caller, False, path)
         self.base_caller = base_caller
         self.subsequent_method_name = subsequent_method_name
