@@ -488,12 +488,12 @@ $function_name($function_arguments)
         if self.function.number_of_parameters() != len(self.parameter_values):
             raise Exception('number of parameters is not equal to number of values')
 
-        self.imports = list()
-        self.extra = list()
+        self.imports = set()
+        self.extra = set()
         self.parameter_definitions = list()
         self.function_arguments = list()
 
-        self.imports.append('import ' + self.function.module)
+        self.imports.add('import ' + self.function.module)
 
         arg_number = 1
         for parameter_type in self.function.parameter_types:
@@ -501,8 +501,8 @@ $function_name($function_arguments)
             name = 'p' + str(arg_number)
 
             if type(value) is ParameterValue:
-                self.imports.append(value.imports)
-                self.extra.append(value.extra)
+                self.imports.add(value.imports)
+                self.extra.add(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
                 pstr = '{0:s} = {1:s}\n'.format(name, value)
@@ -602,17 +602,17 @@ r = object.$method_name($method_arguments)
         # TODO: does it really need to call it here?
         self.prepare()
 
-    def prepare(self, imports = set(), extra = list()):
+    def prepare(self, imports = set(), extra = set()):
         self.constructor_caller.prepare()
         self.caller.prepare()
 
         self.imports = imports
-        self.imports.update(self.constructor_caller.imports)
-        self.imports.update(self.caller.imports)
+        self.imports = self.imports.union(self.constructor_caller.imports)
+        self.imports = self.imports.union(self.caller.imports)
 
         self.extra = extra
-        self.extra.extend(self.constructor_caller.extra)
-        self.extra.extend(self.caller.extra)
+        self.extra = self.extra.union(self.constructor_caller.extra)
+        self.extra = self.extra.union(self.caller.extra)
 
         self.constructor_parameter_definitions = self.constructor_caller.parameter_definitions
         self.constructor_arguments = self.constructor_caller.constructor_arguments
@@ -687,7 +687,7 @@ r.$method_name($method_arguments)
 
     def prepare(self):
         self.imports = set()
-        self.extra = list()
+        self.extra = set()
         self.parameter_definitions = list()
         self.method_arguments = list()
 
@@ -697,8 +697,8 @@ r.$method_name($method_arguments)
             name = 'p' + str(arg_number)
 
             if type(value) is ParameterValue:
-                self.imports.update(value.imports)
-                self.extra.append(value.extra)
+                self.imports.add(value.imports)
+                self.extra.add(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
                 pstr = '{0:s} = {1:s}\n'.format(name, value)
