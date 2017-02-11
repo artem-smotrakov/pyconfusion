@@ -16,6 +16,7 @@ from core import SubsequentMethodCaller
 # TODO: move it to BaseFuzzer
 fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', 'bytes()',
                   'bytearray()', '\'ololo\'', 'frozenset()', 'set()',
+                  'Exception', 'Exception()',
                   ParameterValue('A()', 'class A: pass'))
 
 # TODO: split it to two classes for light and hard fuzzing
