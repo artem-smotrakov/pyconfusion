@@ -333,8 +333,10 @@ class LightCoroutineFuzzer(BaseFuzzer):
             self.run_and_dump_code(close_caller)
             fuzzer = LightSubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
             fuzzer.run()
+
+            # TODO: what does it expect in the third parameter? TracebackException?
             fuzzer = LightSubsequentMethodFuzzer(self.caller, self.path, 'throw',
-                                                 [ParameterType.exception, ParameterType.any_object, ParameterType.any_object])
+                                                 [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
             fuzzer.run()
 
     def log(self, message):

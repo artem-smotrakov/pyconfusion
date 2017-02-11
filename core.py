@@ -375,6 +375,7 @@ class ParameterType(Enum):
     sysconf_confname = 'sysconf_confname'
     io_ssize_t = 'io_ssize_t'
     exception = 'exception'
+    exception_type = 'exception type'
 
     def __str__(self):
         return self.value
@@ -457,6 +458,8 @@ class ParameterType(Enum):
             return '-1'
         if ptype == ParameterType.exception:
             return 'Exception()'
+        if ptype == ParameterType.exception_type:
+            return 'Exception'
 
         # TODO: anything better?
         return '(1, 2, 3)'
