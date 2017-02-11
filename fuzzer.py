@@ -274,24 +274,30 @@ class HardMethodFuzzer(BaseFuzzer):
         self.fuzz_coroutine = fuzz_coroutine
         self.path = path
 
+    def create_caller(self):
+        return MethodCaller(self.method, self.constructor_caller)
+
+    def get_number_of_parameters(self):
+        return self.method.number_of_parameters()
+
     def run(self):
-        if self.method.number_of_parameters() == 0:
+        if self.get_number_of_parameters() == 0:
             self.log('method doesn\'t have parameters, just call it')
-            caller = MethodCaller(self.method, self.constructor_caller)
+            caller = self.create_caller()
             self.run_and_dump_code(caller)
             if self.fuzz_coroutine:
-                LightCoroutineFuzzer(caller, self.path).run()
+                HardCoroutineFuzzer(caller, self.path).run()
         else:
-            caller = MethodCaller(self.method, self.constructor_caller)
+            caller = self.create_caller()
             self.fuzz_hard(caller, 1)
 
     def fuzz_hard(self, caller, current_arg_number):
-        if current_arg_number == caller.method.number_of_parameters():
+        if current_arg_number == self.get_number_of_parameters():
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
                 self.run_and_dump_code(caller)
                 if self.fuzz_coroutine:
-                    LightCoroutineFuzzer(caller, self.path).run()
+                    HardCoroutineFuzzer(caller, self.path).run()
         else:
             for value in fuzzing_values:
                 caller.set_parameter_value(current_arg_number, value)
@@ -324,13 +330,26 @@ class LightCoroutineFuzzer(BaseFuzzer):
     def log(self, message):
         core.print_with_prefix('LightCoroutineFuzzer', message)
 
-class HardCoroutineFuzzer:
+class HardCoroutineFuzzer(BaseFuzzer):
 
-    def __init__(self, caller):
+    def __init__(self, caller, path = None):
+        super().__init__(path)
         self.caller = caller
+        self.path = path
 
     def run(self):
-        raise Exception('not implemented yet')
+        checker = CoroutineChecker(self.caller)
+        if checker.is_coroutine():
+            self.log('coroutine found')
+            close_caller = SubsequentMethodCaller(self.caller, 'close')
+            self.run_and_dump_code(close_caller)
+            fuzzer = HardSubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
+            fuzzer.run()
+
+            # TODO: what does it expect in the third parameter? TracebackException?
+            fuzzer = HardSubsequentMethodFuzzer(self.caller, self.path, 'throw',
+                                                 [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
+            fuzzer.run()
 
     def log(self, message):
         core.print_with_prefix('HardCoroutineFuzzer', message)
@@ -351,3 +370,20 @@ class LightSubsequentMethodFuzzer(LightMethodFuzzer):
 
     def log(self, message):
         core.print_with_prefix('LightSubsequentMethodFuzzer', message)
+
+class HardSubsequentMethodFuzzer(HardMethodFuzzer):
+
+    def __init__(self, base_caller, path, subsequent_method_name, parameter_types = []):
+        super().__init__(base_caller.method, base_caller.constructor_caller, False, path)
+        self.base_caller = base_caller
+        self.subsequent_method_name = subsequent_method_name
+        self.parameter_types = parameter_types
+
+    def create_caller(self):
+        return SubsequentMethodCaller(self.base_caller, self.subsequent_method_name, self.parameter_types)
+
+    def get_number_of_parameters(self):
+        return len(self.parameter_types)
+
+    def log(self, message):
+        core.print_with_prefix('HardSubsequentMethodFuzzer', message)
