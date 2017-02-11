@@ -194,13 +194,6 @@ class ClassFuzzer:
         except Exception as err:
             self.log('exception {0}: {1}'.format(type(err), err))
 
-    def try_coroutine_fuzzing(self, caller):
-        checker = CoroutineChecker(caller)
-        if checker.is_coroutine():
-            self.log('coroutine found')
-            close_caller = SubsequentMethodCaller(caller, 'close')
-            self.run_and_dump_code(close_caller)
-
     def run_light_fuzzing(self, constructor_caller):
         self.log('run light fuzzing for class: ' + self.clazz.name)
         for method_name in self.clazz.methods:
@@ -272,13 +265,6 @@ class LightMethodFuzzer(BaseFuzzer):
                     caller.set_parameter_value(arg_number, value)
                     self.run_and_dump_code(caller)
                 arg_number = arg_number + 1
-
-    def try_coroutine_fuzzing(self, caller):
-        checker = CoroutineChecker(caller)
-        if checker.is_coroutine():
-            self.log('coroutine found')
-            close_caller = SubsequentMethodCaller(caller, 'close')
-            self.run_and_dump_code(close_caller)
 
     def log(self, message):
         core.print_with_prefix('LightMethodFuzzer', message)
