@@ -910,10 +910,13 @@ class TestDump:
 
         key = None
         if type(caller) == FunctionCaller:
+            subdir = '{0:s}'.format(caller.function.module)
             key = '{0:s}_{1:s}'.format(caller.function.module, caller.function.name)
         elif type(caller) == MethodCaller:
+            subdir = '{0:s}/{1:s}'.format(caller.method.module, caller.method.clazz.name)
             key = '{0:s}_{1:s}'.format(caller.method.clazz.name, caller.method.name)
         elif type(caller) == SubsequentMethodCaller:
+            subdir = '{0:s}/{1:s}'.format(caller.caller.method.module, caller.caller.method.clazz.name)
             key = '{0:s}_{1:s}_{2:s}'.format(caller.caller.method.clazz.name, caller.caller.method.name, caller.method_name)
         else:
             raise Exception('Unknown caller')
@@ -924,7 +927,14 @@ class TestDump:
         if key in self.next_indexes:
             next_index = self.next_indexes[key]
 
-        fullpath = '{0:s}/{1:s}_{2:d}.py'.format(self.path, key, next_index)
+        directory = '{0:s}/{1:s}'.format(self.path, subdir)
+        if os.path.isfile(directory):
+            raise Exception('{0:s} is a file, not a directory'.format(directory))
+
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+
+        fullpath = '{0:s}/{1:s}_{2:d}.py'.format(directory, key, next_index)
         next_index += 1
         self.next_indexes[key] = next_index
 
