@@ -602,7 +602,8 @@ r = object.$method_name($method_arguments)
         self.constructor_caller = constructor_caller
         self.caller = FunctionCaller(method)
 
-        # TODO: does it really need to call it here?
+        # it needs to be called here because TestDump requests the code before execution
+        # to prevent data lose if python crashes
         self.prepare()
 
     def prepare(self, imports = set(), extra = set()):
@@ -687,6 +688,7 @@ r.$method_name($method_arguments)
         self.parameter_values = []
         for parameter_type in parameter_types:
             self.parameter_values.append(ParameterType.default_value(parameter_type))
+        self.prepare()
 
     def prepare(self):
         self.imports = set()
