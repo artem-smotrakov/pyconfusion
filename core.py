@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
+import datetime
 import textwrap
+import time
 import os
 
 from enum import Enum
@@ -33,10 +35,12 @@ class Stats(metaclass=Singleton):
     template = """
 Summary
 Total number of tests = $tests
+Time = $time
 """
 
     def __init__(self):
         self.tests = 0
+        self.start_time = time.time()
 
     # returns a single instance
     def get():
@@ -46,8 +50,10 @@ Total number of tests = $tests
         self.tests = self.tests + 1
 
     def print(self):
+        total_time = round(time.time() - self.start_time)
+        time_str = str(datetime.timedelta(seconds=total_time))
         template = Template(Stats.template)
-        out = template.substitute(tests = self.tests)
+        out = template.substitute(tests = self.tests, time = time_str)
         print(out)
 
 class ParserState(Enum):
