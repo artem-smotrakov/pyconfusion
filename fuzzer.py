@@ -258,6 +258,8 @@ class LightMethodFuzzer(BaseFuzzer):
                     caller = self.create_caller()
                     caller.set_parameter_value(arg_number, value)
                     self.run_and_dump_code(caller)
+                    if self.fuzz_coroutine:
+                        LightCoroutineFuzzer(caller, self.path).run()
                 arg_number = arg_number + 1
 
     def log(self, message):
