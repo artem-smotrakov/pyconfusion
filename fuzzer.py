@@ -229,6 +229,25 @@ class BaseFuzzer:
             self.log('exception {0}: {1}'.format(type(err), err))
         Stats.get().increment_tests()
 
+    # returns a subsequent method caller
+    # this method should be implemented in a child class which uses try_coroutine_fuzzing()
+    def create_subsequent_method_fuzzer(self, caller, path, method_name, parameter_types):
+        raise Exception('should not be called')
+
+    def try_coroutine_fuzzing(self):
+        checker = CoroutineChecker(self.caller)
+        if checker.is_coroutine():
+            self.log('coroutine found')
+            close_caller = SubsequentMethodCaller(self.caller, 'close')
+            self.run_and_dump_code(close_caller)
+            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
+            fuzzer.run()
+
+            # TODO: what does it expect in the third parameter? TracebackException?
+            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'throw',
+                                                          [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
+            fuzzer.run()
+
 class LightMethodFuzzer(BaseFuzzer):
 
     def __init__(self, method, constructor_caller, fuzz_coroutine = True, path = None):
@@ -313,19 +332,11 @@ class LightCoroutineFuzzer(BaseFuzzer):
         self.caller = caller
         self.path = path
 
-    def run(self):
-        checker = CoroutineChecker(self.caller)
-        if checker.is_coroutine():
-            self.log('coroutine found')
-            close_caller = SubsequentMethodCaller(self.caller, 'close')
-            self.run_and_dump_code(close_caller)
-            fuzzer = LightSubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
-            fuzzer.run()
+    def create_subsequent_method_fuzzer(self, caller, path, method_name, parameter_types):
+        return LightSubsequentMethodFuzzer(caller, path, method_name, parameter_types)
 
-            # TODO: what does it expect in the third parameter? TracebackException?
-            fuzzer = LightSubsequentMethodFuzzer(self.caller, self.path, 'throw',
-                                                 [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
-            fuzzer.run()
+    def run(self):
+        self.try_coroutine_fuzzing()
 
     def log(self, message):
         core.print_with_prefix('LightCoroutineFuzzer', message)
@@ -337,19 +348,11 @@ class HardCoroutineFuzzer(BaseFuzzer):
         self.caller = caller
         self.path = path
 
-    def run(self):
-        checker = CoroutineChecker(self.caller)
-        if checker.is_coroutine():
-            self.log('coroutine found')
-            close_caller = SubsequentMethodCaller(self.caller, 'close')
-            self.run_and_dump_code(close_caller)
-            fuzzer = HardSubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
-            fuzzer.run()
+    def create_subsequent_method_fuzzer(self, caller, path, method_name, parameter_types):
+        return HardSubsequentMethodFuzzer(caller, path, method_name, parameter_types)
 
-            # TODO: what does it expect in the third parameter? TracebackException?
-            fuzzer = HardSubsequentMethodFuzzer(self.caller, self.path, 'throw',
-                                                 [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
-            fuzzer.run()
+    def run(self):
+        self.try_coroutine_fuzzing()
 
     def log(self, message):
         core.print_with_prefix('HardCoroutineFuzzer', message)
