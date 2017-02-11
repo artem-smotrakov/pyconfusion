@@ -12,6 +12,7 @@ from core import ConstructorCaller
 from core import TestDump
 from core import CoroutineChecker
 from core import SubsequentMethodCaller
+from core import Stats
 
 # TODO: move it to BaseFuzzer
 fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', 'bytes()',
@@ -186,14 +187,6 @@ class ClassFuzzer:
             self.log('skip fuzzing')
             return None
 
-    def run_and_dump_code(self, caller):
-        self.dump.store(caller)
-        try:
-            caller.call()
-            self.log('wow, it succeded')
-        except Exception as err:
-            self.log('exception {0}: {1}'.format(type(err), err))
-
     def run_light_fuzzing(self, constructor_caller):
         self.log('run light fuzzing for class: ' + self.clazz.name)
         for method_name in self.clazz.methods:
@@ -234,6 +227,7 @@ class BaseFuzzer:
             self.log('wow, it succeded')
         except Exception as err:
             self.log('exception {0}: {1}'.format(type(err), err))
+        Stats.get().increment_tests()
 
 class LightMethodFuzzer(BaseFuzzer):
 

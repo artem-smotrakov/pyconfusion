@@ -21,6 +21,35 @@ def print_with_indent(prefix, first_message, other_messages):
         for message in other_messages:
             print(wrapper.fill(message))
 
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class Stats(metaclass=Singleton):
+
+    template = """
+Summary
+Total number of tests = $tests
+"""
+
+    def __init__(self):
+        self.tests = 0
+
+    # returns a single instance
+    def get():
+        return Stats()
+
+    def increment_tests(self):
+        self.tests = self.tests + 1
+
+    def print(self):
+        template = Template(Stats.template)
+        out = template.substitute(tests = self.tests)
+        print(out)
+
 class ParserState(Enum):
     expect_clinic_input = 1
     inside_clinic_input = 2

@@ -61,3 +61,5 @@ parser.add_argument('--out', help='path to directory for generated tests')
 # create task
 task = Task(parser.parse_args())
 task.run()
+
+Stats.get().print()
