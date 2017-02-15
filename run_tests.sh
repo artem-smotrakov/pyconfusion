@@ -7,7 +7,7 @@ OPTIONS=${3:-""}
 # disable memory leaks checker
 export ASAN_OPTIONS="${ASAN_OPTIONS} detect_leaks=0"
 
-for TEST in `ls ${TESTS}`
+for TEST in `find ${TESTS} -name "*.py"`
 do
     echo "run ${TEST}"
     ${PYTHON} ${OPTIONS} ${TEST} > log 2>&1
