@@ -37,20 +37,15 @@ class FunctionFuzzer:
 
         # TODO: add a command line option to specify excluded targets
         #       (os, and signal.pthread_kill should be excluded by default)
+        # TODO: those ifs are ugly
+        #       need to define a class wich check if we should skip module/function/method/etc,
+        #       and check instances of this class in a loop
         if self.function.module == 'os':
             self.log('skip \'os\' module')
             return
 
-        if self.function.name == 'signal.pthread_kill':
-            self.log('skip \'signal.pthread_kill()\' function')
-            return
-
-        if self.function.name == 'signal.sigwait':
-            self.log('skip \'signal.sigwait()\' function')
-            return
-
-        if self.function.name == 'signal.sigwaitinfo':
-            self.log('skip \'signal.sigwaitinfo()\' function')
+        if self.function.module == 'signal':
+            self.log('skip \'signal\' module')
             return
 
         # first, we try to call a target function with parameters of expected types
