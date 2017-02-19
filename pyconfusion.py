@@ -45,11 +45,16 @@ class Task:
                 ClassFuzzer(target, self.args['out']).run(self.args['mode'])
 
     def match_filter(self, target):
-        # check if filter was specified
-        if self.args['filter'] == None or not self.args['filter']:
-            return True
+        match = True
 
-        return self.args['filter'] in target.fullname()
+        # check if filter was specified
+        if self.args['filter']:
+            match = match and self.args['filter'] in target.fullname()
+
+        if self.args['exclude']:
+            match = match and not self.args['exclude'] in target.fullname()
+
+        return match
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',  help='path to sources', default='./')
@@ -57,6 +62,7 @@ parser.add_argument('--command', help='what do you want to do?', choices=['targe
 parser.add_argument('--mode', help='how do you want to do?', choices=['light', 'hard'], default='light')
 parser.add_argument('--filter',  help='target filter for fuzzer', default='')
 parser.add_argument('--out', help='path to directory for generated tests')
+parser.add_argument('--exclude', help='what do you want to exclude?')
 
 # create task
 task = Task(parser.parse_args())
