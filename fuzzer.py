@@ -144,10 +144,11 @@ class FunctionFuzzer:
 # TODO: split it to LightClassFuzzer and HardClassFuzzer
 class ClassFuzzer:
 
-    def __init__(self, clazz, path = None):
+    def __init__(self, clazz, path = None, excludes = None):
         self.clazz = clazz
         self.path = path
         self.dump = TestDump(path)
+        self.excludes = excludes
 
     def run(self, mode = 'light'):
         self.log('try to fuzz class: ' + self.clazz.name)
@@ -167,6 +168,18 @@ class ClassFuzzer:
             self.run_hard_fuzzing(constructor_caller)
         else:
             raise Exception('Unknown fuzzing mode: ' + mode)
+
+    def skip(self, target):
+        if self.excludes:
+            if isinstance(self.excludes, list):
+                for exclude in self.excludes:
+                    if exclude in target.fullname():
+                        return True
+            else:
+                if self.excludes in target.fullname():
+                    return True
+
+        return False
 
     def get_constructor_caller(self):
         self.log('try to create an instance of ' + self.clazz.name)
@@ -188,6 +201,7 @@ class ClassFuzzer:
             if method_name == '__init__': continue
 
             method = self.clazz.methods[method_name]
+            if self.skip(method): continue
             self.log('try to fuzz method: ' + method.name)
 
             fuzzer = LightMethodFuzzer(
@@ -200,6 +214,7 @@ class ClassFuzzer:
             if method_name == '__init__': continue
 
             method = self.clazz.methods[method_name]
+            if self.skip(method): continue
             self.log('try to fuzz method: ' + method.name)
 
             fuzzer = HardMethodFuzzer(

@@ -14,6 +14,9 @@ class Task:
     # read arguments returned by argparse.ArgumentParser
     def __init__(self, args):
         self.args = vars(args)
+        self.excludes = None
+        if self.args['exclude']:
+            self.excludes = self.args['exclude'].split(',')
 
     def __getattr__(self, name):
         return self.args[name]
@@ -36,25 +39,29 @@ class Task:
     def fuzz(self, targets):
         for target in targets:
             # check if the line matches specified filter
-            if not self.match_filter(target): continue
+            if self.skip(target): continue
 
             if isinstance(target, TargetFunction):
                 FunctionFuzzer(target, self.args['out']).run(self.args['mode'])
 
             if isinstance(target, TargetClass):
-                ClassFuzzer(target, self.args['out']).run(self.args['mode'])
+                ClassFuzzer(target, self.args['out'], self.excludes).run(self.args['mode'])
 
-    def match_filter(self, target):
-        match = True
-
+    def skip(self, target):
         # check if filter was specified
-        if self.args['filter']:
-            match = match and self.args['filter'] in target.fullname()
+        if self.args['filter'] and not self.args['filter'] in target.fullname():
+            return True
 
-        if self.args['exclude']:
-            match = match and not self.args['exclude'] in target.fullname()
+        if self.excludes:
+            if isinstance(self.excludes, list):
+                for exclude in self.excludes:
+                    if exclude in target.fullname():
+                        return True
+            else:
+                if self.excludes in target.fullname():
+                    return True
 
-        return match
+        return False
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',  help='path to sources', default='./')

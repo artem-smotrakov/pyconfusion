@@ -905,6 +905,9 @@ class TargetMethod:
     def add_parameter(self, parameter_type):
         self.parameter_types.append(parameter_type)
 
+    def fullname(self):
+        return self.name
+
 class TestDump:
 
     def __init__(self, path):
