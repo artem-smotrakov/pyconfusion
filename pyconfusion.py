@@ -34,7 +34,12 @@ class Task:
     def search_targets(self):
         if self.args['src'] == None:
             raise Exception('Sources not specified')
-        finder = ClinicTargetFinder(self.args['src'])
+        if self.args['finder'] == 'clinic':
+            finder = ClinicTargetFinder(self.args['src'])
+        elif self.args['finder'] == 'c':
+            finder = CTargetFinder(self.args['src'])
+        else:
+            raise Exception('Unexpected finder type: ' + self.args['finder'])
         return finder.run()
 
     def fuzz(self, targets):
@@ -67,6 +72,7 @@ class Task:
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',  help='path to sources', default='./')
 parser.add_argument('--command', help='what do you want to do?', choices=['targets', 'fuzzer'], default='targets')
+parser.add_argument('--finder', help='type of parser of C files', choices=['clinic', 'c'], default='clinic')
 parser.add_argument('--mode', help='how do you want to do?', choices=['light', 'hard'], default='light')
 parser.add_argument('--filter',  help='target filter for fuzzer', default='')
 parser.add_argument('--out', help='path to directory for generated tests')
