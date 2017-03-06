@@ -49,13 +49,16 @@ class CTargetFinder:
     def __init__(self, path):
         self.path = path
 
-    def run(self):
+    def run(self, filter):
         targets = []
         self.contents = {}
         for filename in look_for_c_files(self.path):
             self.contents[filename] = read_file(filename)
 
         for filename in self.contents:
+            if not filter in filename:
+                self.log('skip ' + filename)
+                continue
             for target in self.parse_c_file(filename):
                 targets.append(target)
 
@@ -183,7 +186,9 @@ class ClinicTargetFinder:
     def __init__(self, path):
         self.path = path
 
-    def run(self):
+    def run(self, filter):
+        if filter != None:
+            self.log('filters are not supported')
         targets = []
         for filename in look_for_c_files(self.path):
             for target in self.parse_c_file(filename):

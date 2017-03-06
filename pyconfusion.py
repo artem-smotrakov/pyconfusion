@@ -40,7 +40,7 @@ class Task:
             finder = CTargetFinder(self.args['src'])
         else:
             raise Exception('Unexpected finder type: ' + self.args['finder'])
-        return finder.run()
+        return finder.run(self.args['filter'])
 
     def fuzz(self, targets):
         for target in targets:
