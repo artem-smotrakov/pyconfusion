@@ -32,6 +32,18 @@ def read_file(filename):
     with open(filename) as f:
         return f.readlines()
 
+def contains_all(string, values=[]):
+    for value in values:
+        if not value in string:
+            return False
+    return True
+
+def extract_fucn_name(line):
+    tmp = line.split(',')
+    if tmp == None or len(tmp) == 0:
+        return None
+    return extract(tmp[0], '"', '"')
+
 class CTargetFinder:
 
     def __init__(self, path):
@@ -116,19 +128,44 @@ class CTargetFinder:
                 line = line.strip();
                 if '};' in line:
                     break
+                func_name = None
                 if line.startswith('{'):
-                    tmp = line.split(',')[0]
-                    func_name = extract(tmp, '"', '"')
-                    if func_name == None:
-                        self.warn('could not extract function name: ' + line)
-                        continue
-                    self.log('found function: ' + func_name)
-                    func = TargetFunction(filename, module, func_name)
-                    self.functions.append(func)
+                    func_name = extract_fucn_name(line)
                 else:
-                    self.warn('could not extract function: ' + line)
+                    define_lines = self.look_for_define(line)
+                    if define_lines != None:
+                        for define_line in define_lines:
+                            func_name = extract_fucn_name(define_line)
+                            if func_name != None:
+                                break
+                if func_name == None:
+                    self.warn('could not extract function name: ' + line)
+                    continue
+                self.log('found function: ' + func_name)
+                func = TargetFunction(filename, module, func_name)
+                self.functions.append(func)
             if 'PyMethodDef' in line and methods_pointer in line:
                 found_structure = True
+
+    def look_for_define(self, string):
+        for filename in self.contents:
+            content = self.contents[filename]
+            result = []
+            for line in content:
+                if len(result) > 0 and '\\' in line:
+                    result.append(line)
+                elif len(result) > 0:
+                    return result
+                if contains_all(line, ['#define', string]):
+                    result.append(line)
+                    if '\\' in line:
+                        continue
+                    else:
+                        return result
+            if len(result) > 0:
+                return result
+
+        return None
 
     def log(self, message):
         print_with_prefix('CTargetFinder', message)
