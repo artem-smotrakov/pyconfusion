@@ -155,9 +155,9 @@ class CTargetFinder:
             content = self.contents[filename]
             result = []
             for line in content:
-                if len(result) > 0 and '\\' in line:
+                if len(result) > 0:
                     result.append(line)
-                elif len(result) > 0:
+                if len(result) > 0 and not '\\' in line:
                     return result
                 if contains_all(line, ['#define', string]):
                     result.append(line)
