@@ -39,7 +39,11 @@ class CTargetFinder:
 
     def run(self):
         targets = []
+        self.contents = {}
         for filename in look_for_c_files(self.path):
+            self.contents[filename] = read_file(filename)
+
+        for filename in self.contents:
             for target in self.parse_c_file(filename):
                 targets.append(target)
 
@@ -48,13 +52,11 @@ class CTargetFinder:
     def parse_c_file(self, filename):
         self.log('parse file: ' + filename)
         targets = []
-
-        content = read_file(filename)
-        self.look_for_modules(content)
-
+        self.look_for_modules(filename)
         return targets
 
-    def look_for_modules(self, content):
+    def look_for_modules(self, filename):
+        content = self.contents[filename]
         self.modules = {}
         for line in content:
             if 'PyModule_Create' in line:
@@ -71,15 +73,16 @@ class CTargetFinder:
                     self.warn('could not extract pointer to module structure: ' + line)
                     continue
                 # look for module name
-                module_name = self.look_for_module_name(content, pointer)
+                module_name = self.look_for_module_name(filename, pointer)
                 if module_name == None:
                     self.warn('could not find module name for pointer: ' + pointer)
                     continue
                 self.log('found module: {0:s} (variable: {1:s})'.format(module_name, variable))
                 self.modules[variable] = module_name
-                self.look_for_module_functions(content, pointer, module_name)
+                self.look_for_module_functions(filename, pointer, module_name)
 
-    def look_for_module_name(self, content, pointer):
+    def look_for_module_name(self, filename, pointer):
+        content = self.contents[filename]
         found_structure = False
         skipped_lines = 0
         for line in content:
@@ -90,7 +93,8 @@ class CTargetFinder:
             if 'PyModuleDef' in line and pointer in line:
                 found_structure = True
 
-    def look_for_module_functions(self, content, pointer, module):
+    def look_for_module_functions(self, filename, pointer, module):
+        content = self.contents[filename]
         found_structure = False
         skipped_lines = 0
         methods_pointer = None
@@ -119,7 +123,7 @@ class CTargetFinder:
                         self.warn('could not extract function name: ' + line)
                         continue
                     self.log('found function: ' + func_name)
-                    func = TargetFunction('TBD filename', module, func_name)
+                    func = TargetFunction(filename, module, func_name)
                     self.functions.append(func)
                 else:
                     self.warn('could not extract function: ' + line)
