@@ -19,6 +19,17 @@ def look_for_c_files(path):
 
     return result
 
+def extract(s, first, second):
+    start = s.find(first)
+    end = s.find(second, start + 1)
+    if start >= 0 and end > start:
+        return s[start + 1:end].strip()
+    return None
+
+def read_file(filename):
+    with open(filename) as f:
+        return f.readlines()
+
 class CTargetFinder:
 
     def __init__(self, path):
@@ -35,10 +46,50 @@ class CTargetFinder:
     def parse_c_file(self, filename):
         self.log('parse file: ' + filename)
         targets = []
+
+        content = read_file(filename)
+        self.look_for_modules(content)
+
         return targets
+
+    def look_for_modules(self, content):
+        self.modules = {}
+        for line in content:
+            if 'PyModule_Create' in line:
+                # extract variable name
+                variable = extract(line, '*', '=')
+                if variable == None:
+                    self.warn('could not extract module variable name: ' + line)
+                    continue
+                # extract pointer to module structure
+                pointer = extract(line, '&', ')')
+                if pointer == None:
+                    self.warn('could not extract pointer to module structure: ' + line)
+                    continue
+                # look for module name
+                module_name = self.look_for_module_name(content, pointer)
+                if module_name == None:
+                    self.warn('could not find module name for pointer: ' + pointer)
+                    continue
+                self.log('found module: {0:s} (variable: {1:s})'.format(module_name, variable))
+                self.modules[variable] = module_name
+
+    def look_for_module_name(self, content, pointer):
+        found_structure = False
+        skipped_lines = 0
+        for line in content:
+            if skipped_lines == 1:
+                return extract(line, '"', '"')
+            if found_structure:
+                skipped_lines = skipped_lines + 1
+            if 'PyModuleDef' in line and pointer in line:
+                found_structure = True
 
     def log(self, message):
         print_with_prefix('CTargetFinder', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
 
 class ClinicParserState(Enum):
     expect_clinic_input = 1
