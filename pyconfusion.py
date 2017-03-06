@@ -6,6 +6,7 @@ import core
 from fuzzer import FunctionFuzzer
 from fuzzer import ClassFuzzer
 from core import *
+from targets import *
 
 # contains fuzzer configuration
 # all parameters can be accessed as attributes
@@ -33,7 +34,7 @@ class Task:
     def search_targets(self):
         if self.args['src'] == None:
             raise Exception('Sources not specified')
-        finder = TargetFinder(self.args['src'])
+        finder = ClinicTargetFinder(self.args['src'])
         return finder.run()
 
     def fuzz(self, targets):

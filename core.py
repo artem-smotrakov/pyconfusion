@@ -56,326 +56,6 @@ Time = $time
         out = template.substitute(tests = self.tests, time = time_str)
         print(out)
 
-class ParserState(Enum):
-    expect_clinic_input = 1
-    inside_clinic_input = 2
-    expect_end_generated_code = 3
-
-class TargetFinder:
-
-    def __init__(self, path):
-        self.path = path
-
-    def run(self):
-        targets = []
-        for filename in self.look_for_c_files(self.path):
-            for target in self.parse_c_file(filename):
-                targets.append(target)
-
-        return targets
-
-    def look_for_c_files(self, path):
-        result = []
-        if os.path.isfile(path):
-            result.append(path)
-            return result
-
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                # TODO: should it look for .h files as well?
-                if file.endswith('.c') or file.endswith('.h'):
-                    filename = os.path.join(root, file)
-                    result.append(filename)
-
-        return result
-
-    def parse_c_file(self, filename):
-        self.log('parse file: ' + filename)
-        with open(filename) as f:
-            content = f.readlines()
-            state = ParserState.expect_clinic_input
-            module = None
-            classes = {}
-            functions = []
-            current_method_or_function = None
-            for line in content:
-                # trim the line
-                line = line.rstrip('\n')
-
-                # skip empty lines
-                if not line: continue
-
-                # all function and method declarations go in [clinic input] section
-                if '[clinic input]' in line:
-                    if state != ParserState.expect_clinic_input:
-                        raise Exception('Unexpected [clinic input] section')
-
-                    state = ParserState.inside_clinic_input
-                    star_found = False
-                    continue
-
-                if '[clinic start generated code]' in line:
-                    if state != ParserState.inside_clinic_input:
-                        raise Exception('Unexpected [clinic start generated code] section')
-
-                    # now start skipping just skip the actual code
-                    state = ParserState.expect_end_generated_code
-                    continue
-
-                if '[clinic end generated code' in line:
-                    # found [clinic end generated code] line
-                    # then we look for next [clinic input] section
-                    # we don't check for ParserState.expect_end_generated_code state here
-                    # because there may be multiple [clinic end generated code] sections
-
-                    state = ParserState.expect_clinic_input
-                    continue
-
-                # skip the code if we are in [clinic end generated code] section
-                if state == ParserState.expect_end_generated_code:
-                    continue
-
-                # check if we are inside [clinic input] section, and should expect declarations
-                if state == ParserState.inside_clinic_input:
-                    # parse [clinic input] section
-
-                    # ignore comments
-                    if line.startswith('#'): continue
-
-                    # check if we found a module declaration
-                    if line.startswith('module '):
-                        # there should be only one module in a file
-                        if module != None:
-                            self.log('error while parsing line: ' + line)
-                            raise Exception('Module already defined')
-
-                        module = line[len('module'):]
-                        module = module.strip()
-                        self.log('found module: ' + module)
-                        continue
-
-                     # at this point we should have found a module name
-                    if module is None:
-                        self.log('warning: no module found, line: ' + line)
-                        self.log('skip file')
-                        return []
-
-                    # check if we found a class declaration
-                    if line.startswith('class '):
-                        classname = line[len('class '):]
-                        classname = classname[:classname.index(' ')]
-                        classname = classname.strip();
-
-                        # check for duplicate class declarations
-                        if classname in classes:
-                            self.log('error while parsing line: ' + line)
-                            raise Exception('duplicate class declaration')
-
-                        self.log('found class ' + classname)
-
-                        clazz = TargetClass(filename, module, classname)
-                        classes[classname] = clazz
-                        continue
-
-                    if line.startswith(module):
-                        # check if it's a method of a class
-                        clazz = None
-                        for classname in classes:
-                            if line.startswith(classname):
-                                # it is a declaration of a method
-                                clazz = classes[classname];
-                                break
-
-                        if clazz != None:
-                            # add a method
-                            methodname = line[len(clazz.name)+1:]
-                            self.log('found method of class \'{0:s}\': {1:s}'.format(clazz.name, methodname))
-                            current_method_or_function = clazz.add_method(methodname)
-                        else:
-                            # add a function
-                            index = line.find(' ')
-                            if index > 0:
-                                name = line[:index]
-                            else:
-                                name = line
-
-                            name = name.strip()
-                            self.log('found function: ' + name)
-
-                            current_method_or_function = TargetFunction(filename, module, name)
-                            functions.append(current_method_or_function)
-
-                    # stop if we found keywords
-                    # TODO: try to fuzz keywords
-                    if line.strip() == '*':
-                        star_found = True
-
-                    if star_found: continue
-
-                    # assume that a line with description of a parameter looks like '  param: desctiption'
-                    if line.startswith('  ') and ': ' in line:
-                        if current_method_or_function == None:
-                            self.log('error while parsing line: ' + line)
-                            self.log('warning: no function or method found yet')
-                        else:
-                            index = line.find(':')
-                            if index <= 0: continue
-                            parameter_name = line[:index].strip()
-
-                            # TODO: seems like we need to take into account indentation here
-                            #       instead of looking for whitespaces
-                            if ' ' in parameter_name: continue
-
-                            parameter_type = self.extract_parameter_type(line)
-                            current_method_or_function.add_parameter(parameter_type)
-
-        # merge all found targets
-        targets = []
-
-        for func in functions:
-            targets.append(func)
-
-        for key in classes:
-            targets.append(classes[key])
-
-        return targets
-
-    def extract_parameter_type(self, line):
-        pstr = line.strip()
-        index = pstr.find(':')
-        if index <= 0: return ParameterType.unknown
-        pstr = pstr[index+1:]
-        index = pstr.find(' ')
-        if index > 0:
-            pstr = pstr[:index]
-        pstr = pstr.strip()
-
-        # check if there is a default value
-        # TODO: use default value while fuzzing
-        index = pstr.rfind('=')
-        default_value = None
-        if index >= 0:
-            pstr = pstr[:index]
-            pstr = pstr.strip()
-            default_value = pstr[index+1:]
-            default_value = default_value.strip()
-
-        # TODO: get rid of these terrible ifs (and also see below)
-        if pstr == 'Py_buffer' or 'Py_buffer(accept' in pstr:
-            return ParameterType.byte_like_object
-        if pstr == 'long':
-            return ParameterType.long
-        if pstr.startswith('unsigned_long(bitwise'):
-            return ParameterType.unsigned_long
-        if pstr == 'double':
-            return ParameterType.double
-        if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
-            return ParameterType.complex_number
-        if self.is_any_object(pstr):
-            return ParameterType.any_object
-        if self.is_ssize_t(pstr):
-            return ParameterType.ssize_t
-        if pstr == 'bool':
-            return ParameterType.boolean
-        if self.is_boolean(pstr, default_value):
-            return ParameterType.boolean
-        if self.is_int(pstr):
-            return ParameterType.integer
-        if self.is_string(pstr):
-            return ParameterType.string
-        if pstr == 'ascii_buffer':
-            return ParameterType.ascii_buffer
-        if self.is_unicode(pstr):
-            return ParameterType.unicode_buffer
-        if 'unsigned_int' in pstr:
-            return ParameterType.unsigned_int
-        if 'lzma_filter' in pstr:
-            return ParameterType.lzma_filter
-        if 'lzma_vli' in pstr:
-            return ParameterType.lzma_vli
-        if self.is_path_t(pstr):
-            return ParameterType.path_t
-        if self.is_dir_fd(pstr):
-            return ParameterType.dir_fd
-        if pstr == 'fildes':
-            return ParameterType.file_descriptor
-        if pstr == 'uid_t':
-            return ParameterType.uid_t
-        if pstr == 'gid_t':
-            return ParameterType.gid_t
-        if pstr == 'FSConverter':
-            return ParameterType.FSConverter
-        if pstr == 'pid_t' or pstr == 'id_t':
-            return ParameterType.pid_t
-        if pstr == 'sched_param':
-            return ParameterType.sched_param
-        if pstr == 'idtype_t':
-            return ParameterType.idtype_t
-        if pstr == 'intptr_t':
-            return ParameterType.intptr_t
-        if pstr == 'Py_off_t':
-            return ParameterType.off_t
-        if pstr == 'dev_t':
-            return ParameterType.dev_t
-        if pstr == 'path_confname':
-            return ParameterType.path_confname
-        if pstr == 'confstr_confname':
-            return ParameterType.confstr_confname
-        if pstr == 'sysconf_confname':
-            return ParameterType.sysconf_confname
-        if pstr == 'io_ssize_t':
-            return ParameterType.io_ssize_t
-        # we don't have ParameterType.exception here (should we?)
-
-        self.log('warning: unexpected type string: ' + pstr)
-        return ParameterType.unknown
-
-    def is_unicode(self, pstr):
-        return (pstr == 'unicode'
-                or pstr == 'Py_UNICODE'
-                or pstr.startswith('Py_UNICODE(zeroes'))
-
-    def is_dir_fd(self, pstr):
-        return (pstr == 'dir_fd' or pstr.startswith('dir_fd('))
-
-    def is_path_t(self, pstr):
-        return (pstr == 'path_t'
-                or pstr.startswith('path_t(allow_fd')
-                or pstr.startswith('path_t(nullable'))
-
-    def is_string(self, pstr):
-        return (pstr == 'str'
-                or pstr.startswith('str(accept')
-                or pstr.startswith('str(c_default'))
-
-    def is_int(self, pstr):
-        return (pstr == 'int'
-                or pstr.startswith('int(c_default')
-                or pstr.startswith('int(accept')
-                or pstr.startswith('int(py_default')
-                or pstr.startswith('int(type'))
-
-    def is_boolean(self, pstr, default_value):
-        return ((pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")')
-                and (default_value == 'True' or default_value == 'False'))
-
-    def is_ssize_t(self, pstr):
-        return (pstr == 'Py_ssize_t'
-                or pstr == 'ssize_t'
-                or pstr.startswith('ssize_t(c_default')
-                or pstr.startswith('Py_ssize_t(c_default'))
-
-    def is_any_object(self, pstr):
-        return (pstr == 'object'
-                or pstr.startswith('object(c_default')
-                or pstr.startswith('object(converter')
-                or pstr.startswith('object(subclass_of')
-                or pstr.startswith('object(type')
-                or pstr == '\'O\'')
-
-    def log(self, message):
-        print_with_prefix('TargetFinder', message)
-
 class ParameterType(Enum):
     unknown = 'unknown'
     byte_like_object = 'byte-like object'
@@ -414,6 +94,119 @@ class ParameterType(Enum):
 
     def __str__(self):
         return self.value
+
+    # TODO: get rid of these terrible ifs (and also see below)
+    def extract_parameter_type(pstr, default_value):
+        if pstr == 'Py_buffer' or 'Py_buffer(accept' in pstr:
+            return ParameterType.byte_like_object
+        if pstr == 'long':
+            return ParameterType.long
+        if pstr.startswith('unsigned_long(bitwise'):
+            return ParameterType.unsigned_long
+        if pstr == 'double':
+            return ParameterType.double
+        if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
+            return ParameterType.complex_number
+        if ParameterType.is_any_object(pstr):
+            return ParameterType.any_object
+        if ParameterType.is_ssize_t(pstr):
+            return ParameterType.ssize_t
+        if pstr == 'bool':
+            return ParameterType.boolean
+        if ParameterType.is_boolean(pstr, default_value):
+            return ParameterType.boolean
+        if ParameterType.is_int(pstr):
+            return ParameterType.integer
+        if ParameterType.is_string(pstr):
+            return ParameterType.string
+        if pstr == 'ascii_buffer':
+            return ParameterType.ascii_buffer
+        if ParameterType.is_unicode(pstr):
+            return ParameterType.unicode_buffer
+        if 'unsigned_int' in pstr:
+            return ParameterType.unsigned_int
+        if 'lzma_filter' in pstr:
+            return ParameterType.lzma_filter
+        if 'lzma_vli' in pstr:
+            return ParameterType.lzma_vli
+        if ParameterType.is_path_t(pstr):
+            return ParameterType.path_t
+        if ParameterType.is_dir_fd(pstr):
+            return ParameterType.dir_fd
+        if pstr == 'fildes':
+            return ParameterType.file_descriptor
+        if pstr == 'uid_t':
+            return ParameterType.uid_t
+        if pstr == 'gid_t':
+            return ParameterType.gid_t
+        if pstr == 'FSConverter':
+            return ParameterType.FSConverter
+        if pstr == 'pid_t' or pstr == 'id_t':
+            return ParameterType.pid_t
+        if pstr == 'sched_param':
+            return ParameterType.sched_param
+        if pstr == 'idtype_t':
+            return ParameterType.idtype_t
+        if pstr == 'intptr_t':
+            return ParameterType.intptr_t
+        if pstr == 'Py_off_t':
+            return ParameterType.off_t
+        if pstr == 'dev_t':
+            return ParameterType.dev_t
+        if pstr == 'path_confname':
+            return ParameterType.path_confname
+        if pstr == 'confstr_confname':
+            return ParameterType.confstr_confname
+        if pstr == 'sysconf_confname':
+            return ParameterType.sysconf_confname
+        if pstr == 'io_ssize_t':
+            return ParameterType.io_ssize_t
+        # we don't have ParameterType.exception here (should we?)
+
+        return ParameterType.unknown
+
+    def is_unicode(pstr):
+        return (pstr == 'unicode'
+                or pstr == 'Py_UNICODE'
+                or pstr.startswith('Py_UNICODE(zeroes'))
+
+    def is_dir_fd(pstr):
+        return (pstr == 'dir_fd' or pstr.startswith('dir_fd('))
+
+    def is_path_t(pstr):
+        return (pstr == 'path_t'
+                or pstr.startswith('path_t(allow_fd')
+                or pstr.startswith('path_t(nullable'))
+
+    def is_string(pstr):
+        return (pstr == 'str'
+                or pstr.startswith('str(accept')
+                or pstr.startswith('str(c_default'))
+
+    def is_int(pstr):
+        return (pstr == 'int'
+                or pstr.startswith('int(c_default')
+                or pstr.startswith('int(accept')
+                or pstr.startswith('int(py_default')
+                or pstr.startswith('int(type'))
+
+    def is_boolean(pstr, default_value):
+        return ((pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")')
+                and (default_value == 'True' or default_value == 'False'))
+
+    def is_ssize_t(pstr):
+        return (pstr == 'Py_ssize_t'
+                or pstr == 'ssize_t'
+                or pstr.startswith('ssize_t(c_default')
+                or pstr.startswith('Py_ssize_t(c_default'))
+
+    def is_any_object(pstr):
+        return (pstr == 'object'
+                or pstr.startswith('object(c_default')
+                or pstr.startswith('object(converter')
+                or pstr.startswith('object(subclass_of')
+                or pstr.startswith('object(type')
+                or pstr == '\'O\'')
 
     def default_value(ptype):
         if ptype == ParameterType.byte_like_object:
