@@ -5,6 +5,41 @@ import core
 from core import *
 from enum import Enum
 
+def look_for_c_files(path):
+    result = []
+    if os.path.isfile(path):
+        result.append(path)
+        return result
+
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if file.endswith('.c') or file.endswith('.h'):
+                filename = os.path.join(root, file)
+                result.append(filename)
+
+    return result
+
+class CTargetFinder:
+
+    def __init__(self, path):
+        self.path = path
+
+    def run(self):
+        targets = []
+        for filename in look_for_c_files(self.path):
+            for target in self.parse_c_file(filename):
+                targets.append(target)
+
+        return targets
+
+    def parse_c_file(self, filename):
+        self.log('parse file: ' + filename)
+        targets = []
+        return targets
+
+    def log(self, message):
+        print_with_prefix('CTargetFinder', message)
+
 class ClinicParserState(Enum):
     expect_clinic_input = 1
     inside_clinic_input = 2
@@ -17,26 +52,11 @@ class ClinicTargetFinder:
 
     def run(self):
         targets = []
-        for filename in self.look_for_c_files(self.path):
+        for filename in look_for_c_files(self.path):
             for target in self.parse_c_file(filename):
                 targets.append(target)
 
         return targets
-
-    def look_for_c_files(self, path):
-        result = []
-        if os.path.isfile(path):
-            result.append(path)
-            return result
-
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                # TODO: should it look for .h files as well?
-                if file.endswith('.c') or file.endswith('.h'):
-                    filename = os.path.join(root, file)
-                    result.append(filename)
-
-        return result
 
     def parse_c_file(self, filename):
         self.log('parse file: ' + filename)
