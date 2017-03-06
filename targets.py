@@ -20,7 +20,9 @@ def look_for_c_files(path):
     return result
 
 def extract(s, first, second):
-    start = s.find(first)
+    start = 0
+    if first != None:
+        start = s.find(first)
     end = s.find(second, start + 1)
     if start >= 0 and end > start:
         return s[start + 1:end].strip()
@@ -59,6 +61,8 @@ class CTargetFinder:
                 # extract variable name
                 variable = extract(line, '*', '=')
                 if variable == None:
+                    variable = extract(line, None, '=')
+                if variable == None:
                     self.warn('could not extract module variable name: ' + line)
                     continue
                 # extract pointer to module structure
@@ -73,6 +77,7 @@ class CTargetFinder:
                     continue
                 self.log('found module: {0:s} (variable: {1:s})'.format(module_name, variable))
                 self.modules[variable] = module_name
+                self.look_for_module_functions(content, pointer, module_name)
 
     def look_for_module_name(self, content, pointer):
         found_structure = False
@@ -83,6 +88,42 @@ class CTargetFinder:
             if found_structure:
                 skipped_lines = skipped_lines + 1
             if 'PyModuleDef' in line and pointer in line:
+                found_structure = True
+
+    def look_for_module_functions(self, content, pointer, module):
+        found_structure = False
+        skipped_lines = 0
+        methods_pointer = None
+        for line in content:
+            if skipped_lines == 4:
+                methods_pointer = extract(line, None, ',')
+                break
+            if found_structure:
+                skipped_lines = skipped_lines + 1
+            if 'PyModuleDef' in line and pointer in line:
+                found_structure = True
+        if methods_pointer == None:
+            self.warn('could not find methods pointer for module pointer: ' + pointer)
+            return
+        self.functions = []
+        found_structure = False
+        for line in content:
+            if found_structure:
+                line = line.strip();
+                if '};' in line:
+                    break
+                if line.startswith('{'):
+                    tmp = line.split(',')[0]
+                    func_name = extract(tmp, '"', '"')
+                    if func_name == None:
+                        self.warn('could not extract function name: ' + line)
+                        continue
+                    self.log('found function: ' + func_name)
+                    func = TargetFunction('TBD filename', module, func_name)
+                    self.functions.append(func)
+                else:
+                    self.warn('could not extract function: ' + line)
+            if 'PyMethodDef' in line and methods_pointer in line:
                 found_structure = True
 
     def log(self, message):
