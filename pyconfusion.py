@@ -40,7 +40,7 @@ class Task:
             finder = CTargetFinder(self.args['src'])
         else:
             raise Exception('Unexpected finder type: ' + self.args['finder'])
-        return finder.run(self.args['filter'])
+        return finder.run(self.args['finder_filter'])
 
     def fuzz(self, targets):
         for target in targets:
@@ -55,7 +55,7 @@ class Task:
 
     def skip(self, target):
         # check if filter was specified
-        if self.args['filter'] and not self.args['filter'] in target.fullname():
+        if self.args['fuzzer_filter'] and not self.args['fuzzer_filter'] in target.fullname():
             return True
 
         if self.excludes:
@@ -74,7 +74,8 @@ parser.add_argument('--src',  help='path to sources', default='./')
 parser.add_argument('--command', help='what do you want to do?', choices=['targets', 'fuzzer'], default='targets')
 parser.add_argument('--finder', help='type of parser of C files', choices=['clinic', 'c'], default='clinic')
 parser.add_argument('--mode', help='how do you want to do?', choices=['light', 'hard'], default='light')
-parser.add_argument('--filter',  help='target filter for fuzzer', default='')
+parser.add_argument('--fuzzer_filter',  help='target filter for fuzzer', default='')
+parser.add_argument('--finder_filter',  help='file filter for finder', default='')
 parser.add_argument('--out', help='path to directory for generated tests')
 parser.add_argument('--exclude', help='what do you want to exclude?')
 

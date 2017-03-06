@@ -52,23 +52,22 @@ class CTargetFinder:
     def run(self, filter):
         targets = []
         self.contents = {}
+
         for filename in look_for_c_files(self.path):
             self.contents[filename] = read_file(filename)
 
+        self.targets = []
         for filename in self.contents:
             if not filter in filename:
                 self.log('skip ' + filename)
                 continue
-            for target in self.parse_c_file(filename):
-                targets.append(target)
+            self.parse_c_file(filename)
 
-        return targets
+        return self.targets
 
     def parse_c_file(self, filename):
         self.log('parse file: ' + filename)
-        targets = []
         self.look_for_modules(filename)
-        return targets
 
     def look_for_modules(self, filename):
         content = self.contents[filename]
@@ -146,7 +145,7 @@ class CTargetFinder:
                     continue
                 self.log('found function: ' + func_name)
                 func = TargetFunction(filename, module, func_name)
-                self.functions.append(func)
+                self.targets.append(func)
             if 'PyMethodDef' in line and methods_pointer in line:
                 found_structure = True
 
