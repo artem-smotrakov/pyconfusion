@@ -140,13 +140,9 @@ class CTargetFinder:
                     func_name = extract_fucn_name(line)
                     no_args = 'METH_NOARGS' in line
                 else:
-                    define_lines = self.look_for_define(line)
-                    if define_lines != None:
-                        for define_line in define_lines:
-                            if func_name == None:
-                                func_name = extract_fucn_name(define_line)
-                            if not no_args:
-                                no_args = 'METH_NOARGS' in define_line
+                    for define_line in self.look_for_define(line):
+                        if func_name == None: func_name = extract_fucn_name(define_line)
+                        if not no_args: no_args = 'METH_NOARGS' in define_line
                 if func_name == None:
                     self.warn('could not extract function name: ' + line)
                     continue
@@ -264,7 +260,7 @@ class CTargetFinder:
             if len(result) > 0:
                 return result
 
-        return None
+        return []
 
     def log(self, message):
         print_with_prefix('CTargetFinder', message)
