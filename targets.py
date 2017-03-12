@@ -135,17 +135,23 @@ class CTargetFinder:
                 if '};' in line:
                     break
                 func_name = None
+                no_args = False
                 if line.startswith('{'):
                     func_name = extract_fucn_name(line)
+                    no_args = 'METH_NOARGS' in line
                 else:
                     define_lines = self.look_for_define(line)
                     if define_lines != None:
                         for define_line in define_lines:
-                            func_name = extract_fucn_name(define_line)
-                            if func_name != None:
-                                break
+                            if func_name == None:
+                                func_name = extract_fucn_name(define_line)
+                            if not no_args:
+                                no_args = 'METH_NOARGS' in define_line
                 if func_name == None:
                     self.warn('could not extract function name: ' + line)
+                    continue
+                if no_args:
+                    self.log('found a function with no arguments, skip it: ' + func_name)
                     continue
                 func = TargetFunction(filename, module, func_name)
                 self.guess_parameter_types(func)
