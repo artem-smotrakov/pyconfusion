@@ -149,13 +149,8 @@ class CTargetFinder:
                 if no_args:
                     self.log('found a function with no arguments, skip it: ' + func_name)
                     continue
-                func = TargetFunction(filename, module, func_name)
-                self.guess_parameter_types(func)
-                if func.has_unknown_parameters():
-                    self.warn('could not figure out parameter types for ' + func_name)
-                else:
-                    self.log('found function: {0:s} with {1:d} parameters'.format(func_name, func.number_of_parameters()))
-                    self.targets.append(func)
+                self.log('found function: {0:s} with unknown parameters'.format(func_name))
+                self.targets.append(TargetFunction(filename, module, func_name))
             if 'PyMethodDef' in line and methods_pointer in line:
                 found_structure = True
 
