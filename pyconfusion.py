@@ -3,7 +3,7 @@
 import argparse
 import core
 
-from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer
+from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer, DumbFunctionFuzzer
 from fuzzer import ClassFuzzer
 from core import *
 from targets import *
@@ -44,7 +44,13 @@ class Task:
         return CTargetFinder(self.src()).run(self.finder_filter())
 
     def fuzz_c(self):
-        raise Exception('Not implemented yet')
+        for target in self.search_c_targets():
+            # check if the line matches specified filter
+            if self.skip_fuzzing(target): continue
+
+            if isinstance(target, TargetFunction):
+                DumbFunctionFuzzer(target, self.out()).run()
+            # TODO: support class fuzzing
 
     def fuzz_clinic(self):
         for target in self.search_clinic_targets():
