@@ -3,7 +3,7 @@
 import argparse
 import core
 
-from fuzzer import FunctionFuzzer
+from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer
 from fuzzer import ClassFuzzer
 from core import *
 from targets import *
@@ -23,13 +23,15 @@ class Task:
     def src(self):      return self.args['src']
     def no_src(self):   return self.src() == None
     def mode(self):     return self.args['mode']
+    def is_light(self): return self.mode() == 'light'
+    def is_hard(self):  return self.mode() == 'hard'
     def out(self):      return self.args['out']
     def finder_filter(self): return self.args['finder_filter']
     def fuzzer_filter(self): return self.args['fuzzer_filter']
 
     def run(self):
-        if self.no_src() == None: raise Exception('Sources not specified')
-        if self.command() == 'clinic_targets':  self.search_clinic_targets()
+        if   self.no_src() == None: raise Exception('Sources not specified')
+        if   self.command() == 'clinic_targets':  self.search_clinic_targets()
         elif self.command() == 'c_targets':     self.search_c_targets()
         elif self.command() == 'clinic_fuzzer': self.fuzz_clinic()
         elif self.command() == 'c_fuzzer':      self.fuzz_c()
@@ -39,21 +41,19 @@ class Task:
         return ClinicTargetFinder(self.src()).run(self.finder_filter())
 
     def search_c_targets(self):
-        CTargetFinder(self.src()).run(self.finder_filter())
-
-    def fuzz_clinic(self):
-        self.fuzz(self.search_clinic_targets())
+        return CTargetFinder(self.src()).run(self.finder_filter())
 
     def fuzz_c(self):
         raise Exception('Not implemented yet')
 
-    def fuzz_clinic(self, targets):
+    def fuzz_clinic(self):
         for target in self.search_clinic_targets():
             # check if the line matches specified filter
             if self.skip_fuzzing(target): continue
 
             if isinstance(target, TargetFunction):
-                FunctionFuzzer(target, self.out()).run(self.mode())
+                if self.is_light(): LightFunctionFuzzer(target, self.out()).run()
+                if self.is_hard():  HardFunctionFuzzer(target, self.out()).run()
 
             if isinstance(target, TargetClass):
                 ClassFuzzer(target, self.out(), self.excludes).run(self.mode())
@@ -66,11 +66,9 @@ class Task:
         if self.excludes:
             if isinstance(self.excludes, list):
                 for exclude in self.excludes:
-                    if exclude in target.fullname():
-                        return True
+                    if exclude in target.fullname(): return True
             else:
-                if self.excludes in target.fullname():
-                    return True
+                if self.excludes in target.fullname(): return True
 
         return False
 
