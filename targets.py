@@ -4,6 +4,7 @@ import os
 import core
 from core import *
 from enum import Enum
+from difflib import SequenceMatcher
 
 def look_for_c_files(path):
     result = []
@@ -45,6 +46,9 @@ def extract_fucn_name(line):
     return extract(tmp[0], '"', '"')
 
 class CTargetFinder:
+
+    max_parameters_guess = 10
+    parameter_guesses = ('42', '42.3', 'True', '\'ololo\'', 'bytes()', 'bytearray()', '()', '[]', '{}')
 
     def __init__(self, path):
         self.path = path
@@ -143,11 +147,98 @@ class CTargetFinder:
                 if func_name == None:
                     self.warn('could not extract function name: ' + line)
                     continue
-                self.log('found function: ' + func_name)
                 func = TargetFunction(filename, module, func_name)
-                self.targets.append(func)
+                self.guess_parameter_types(func)
+                if func.has_unknown_parameters():
+                    self.warn('could not figure out parameter types for ' + func_name)
+                else:
+                    self.log('found function: {0:s} with {1:d} parameters'.format(func_name, func.number_of_parameters()))
+                    self.targets.append(func)
             if 'PyMethodDef' in line and methods_pointer in line:
                 found_structure = True
+
+    def guess_parameter_types(self, func):
+        # check if invocation without parameters is successful
+        caller = FunctionCaller(func)
+        try:
+            caller.call()
+            # no exception, seems like the function have 0 parameters
+            func.no_unknown_parameters()
+            return
+        except:
+            pass
+        number_of_params = 1
+        exceptions = {}
+        while number_of_params <= CTargetFinder.max_parameters_guess:
+            exception = self.run_func_with_n_parameters(func, number_of_params)
+            if exception == None:
+                # no exception, seems like we figured out a number of parameters
+                func.no_unknown_parameters()
+                return
+            elif isinstance(exception, NameError):
+                self.warn('unexpected NameError, looks like something went wrong: {0}'.format(exception))
+                return
+            elif not isinstance(exception, TypeError):
+                # TypeError is usually thrown in case of wrong parameter number
+                # seems like we're good since it's not TypeError
+                self.log('function has {0:d} parameters, got {1}'.format(number_of_params, exception))
+                func.no_unknown_parameters()
+                return
+            exceptions[number_of_params] = '{0}'.format(exception)
+            if number_of_params >= 3:
+                n = self.look_for_different_exception(exceptions)
+                if n != None:
+                    # we found it
+                    func.reset_parameter_types()
+                    i = 0
+                    while i < n:
+                        func.add_parameter(ParameterType.any_object)
+                        i = i + 1
+                    func.no_unknown_parameters()
+                    return
+            number_of_params = number_of_params + 1
+
+    def look_for_different_exception(self, exceptions):
+        length = len(exceptions)
+        similarity = {}
+        similarity[length] = SequenceMatcher(None, exceptions[1], exceptions[len(exceptions)]).ratio()
+        similarity[0] = similarity[length]
+        s = similarity[length]
+        i = 1
+        while i < length:
+            similarity[i] = SequenceMatcher(None, exceptions[i], exceptions[i+1]).ratio()
+            s = s + similarity[i]
+            i = i + 1
+        avg = s / length
+        i = 1
+        index = -1
+        while i < length:
+            if similarity[i] < avg:
+                index = i
+                break
+            i = i + 1
+        if index < 0:
+            # seems like the function has more parameters
+            return None
+        elif similarity[index+1] < avg:
+            return index+1
+        elif similarity[index-1] < avg:
+            return index
+        else:
+            raise Exception('should not reach here')
+
+    def run_func_with_n_parameters(self, func, number_of_params):
+        func.reset_parameter_types()
+        i = 0
+        while i < number_of_params:
+            func.add_parameter(ParameterType.any_object)
+            i = i + 1
+        caller = FunctionCaller(func)
+        try:
+            caller.call()
+            return None
+        except Exception as e:
+            return e
 
     def look_for_define(self, string):
         for filename in self.contents:
@@ -306,6 +397,9 @@ class ClinicTargetFinder:
                                 name = line
 
                             name = name.strip()
+                            if '.' in name:
+                                parts = name.split('.')
+                                name = parts[len(parts)-1]
                             self.log('found function: ' + name)
 
                             current_method_or_function = TargetFunction(filename, module, name)

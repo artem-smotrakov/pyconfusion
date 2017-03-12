@@ -305,7 +305,7 @@ class FunctionCaller:
 $imports
 $extra
 $parameter_definitions
-$function_name($function_arguments)
+$module_name.$function_name($function_arguments)
 """
 
     def __init__(self, function):
@@ -346,6 +346,7 @@ $function_name($function_arguments)
         self.code = template.substitute(imports = ''.join(self.imports),
                                         extra = ''.join(self.extra),
                                         parameter_definitions = ''.join(self.parameter_definitions),
+                                        module_name = self.function.module,
                                         function_name = self.function.name,
                                         function_arguments = ', '.join(self.function_arguments))
 
@@ -568,7 +569,12 @@ class TargetFunction:
         self.filename = filename
         self.module = module
         self.name = name
+        self.unknown_parameters = True
         self.parameter_types = []
+
+    def has_unknown_parameters(self): return self.unknown_parameters
+    def no_unknown_parameters(self): self.unknown_parameters = False
+    def reset_parameter_types(self): self.parameter_types = []
 
     def number_of_parameters(self):
         return len(self.parameter_types)
