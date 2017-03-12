@@ -563,7 +563,7 @@ r.$method_name($method_arguments)
     def log(self, message):
         print_with_prefix('SubsequentMethodCaller', message)
 
-class TargetFunction:
+class TargetCallable:
 
     def __init__(self, filename, module, name):
         self.filename = filename
@@ -572,6 +572,7 @@ class TargetFunction:
         self.unknown_parameters = True
         self.parameter_types = []
 
+    def has_no_parameters(self): return not self.unknown_parameters and len(self.parameter_types) == 0
     def has_unknown_parameters(self): return self.unknown_parameters
     def no_unknown_parameters(self): self.unknown_parameters = False
     def reset_parameter_types(self): self.parameter_types = []
@@ -581,6 +582,11 @@ class TargetFunction:
 
     def add_parameter(self, parameter_type):
         self.parameter_types.append(parameter_type)
+
+class TargetFunction(TargetCallable):
+
+    def __init__(self, filename, module, name):
+        super().__init__(filename, module, name)
 
     def fullname(self):
         return self.name
@@ -664,6 +670,7 @@ class TargetClass:
     def add_method_with_params(self, name, *parameter_types):
         #name = args[0]
         method = TargetMethod(name, self.module, self)
+        method.no_unknown_parameters()
         for parameter_type in parameter_types:
             method.add_parameter(parameter_type)
         self.methods[name] = method
@@ -690,19 +697,11 @@ class TargetClass:
     def has_constructor(self):
         return self.get_constructor() != None
 
-class TargetMethod:
+class TargetMethod(TargetCallable):
 
     def __init__(self, name, module, clazz):
-        self.name = name
-        self.module = module
+        super().__init__(None, module, name)
         self.clazz = clazz
-        self.parameter_types = []
-
-    def number_of_parameters(self):
-        return len(self.parameter_types)
-
-    def add_parameter(self, parameter_type):
-        self.parameter_types.append(parameter_type)
 
     def fullname(self):
         return self.name

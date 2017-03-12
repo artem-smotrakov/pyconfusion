@@ -27,7 +27,7 @@ class BaseFunctionFuzzer:
         self.dump = TestDump(path)
 
     def skip(self):
-        if self.function.number_of_parameters() == 0:
+        if self.function.has_no_parameters():
             self.log('function doesn\'t have parameters, skip')
             return True
 
@@ -105,7 +105,7 @@ class BaseFunctionFuzzer:
 class LightFunctionFuzzer(BaseFunctionFuzzer):
 
     def __init__(self, function, path = None):
-        super.__init__(function, path)
+        super().__init__(function, path)
 
     def fuzz(self):
         self.log('run light fuzzing for function: ' + self.function.name)
@@ -128,7 +128,7 @@ class LightFunctionFuzzer(BaseFunctionFuzzer):
 class HardFunctionFuzzer(BaseFunctionFuzzer):
 
     def __init__(self, function, path = None):
-        super.__init__(function, path)
+        super().__init__(function, path)
 
     def fuzz(self):
         self.log('run hard fuzzing for function: ' + self.function.name)

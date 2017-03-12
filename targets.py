@@ -400,6 +400,7 @@ class ClinicTargetFinder:
                             self.log('found function: ' + name)
 
                             current_method_or_function = TargetFunction(filename, module, name)
+                            current_method_or_function.no_unknown_parameters()
                             functions.append(current_method_or_function)
 
                     # stop if we found keywords
