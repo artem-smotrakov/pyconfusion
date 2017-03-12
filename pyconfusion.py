@@ -15,13 +15,17 @@ class Task:
     # read arguments returned by argparse.ArgumentParser
     def __init__(self, args):
         self.args = vars(args)
-        self.excludes = None
+        self.excludes = []
         if self.args['exclude']:
             self.excludes = self.args['exclude'].split(',')
 
     def command(self):  return self.args['command']
     def src(self):      return self.args['src']
     def no_src(self):   return self.src() == None
+    def mode(self):     return self.args['mode']
+    def out(self):      return self.args['out']
+    def finder_filter(self): return self.args['finder_filter']
+    def fuzzer_filter(self): return self.args['fuzzer_filter']
 
     def run(self):
         if self.no_src() == None: raise Exception('Sources not specified')
@@ -29,35 +33,34 @@ class Task:
         elif self.command() == 'c_targets':     self.search_c_targets()
         elif self.command() == 'clinic_fuzzer': self.fuzz_clinic()
         elif self.command() == 'c_fuzzer':      self.fuzz_c()
-        else:
-            raise Exception('Unknown command: ' + self.command())
+        else: raise Exception('Unknown command: ' + self.command())
 
     def search_clinic_targets(self):
-        return ClinicTargetFinder(self.src()).run(self.args['finder_filter'])
+        return ClinicTargetFinder(self.src()).run(self.finder_filter())
 
     def search_c_targets(self):
-        CTargetFinder(self.src()).run(self.args['finder_filter'])
+        CTargetFinder(self.src()).run(self.finder_filter())
 
     def fuzz_clinic(self):
         self.fuzz(self.search_clinic_targets())
 
     def fuzz_c(self):
-        raise Exception('not implemented yet')
+        raise Exception('Not implemented yet')
 
     def fuzz_clinic(self, targets):
         for target in self.search_clinic_targets():
             # check if the line matches specified filter
-            if self.skip(target): continue
+            if self.skip_fuzzing(target): continue
 
             if isinstance(target, TargetFunction):
-                FunctionFuzzer(target, self.args['out']).run(self.args['mode'])
+                FunctionFuzzer(target, self.out()).run(self.mode())
 
             if isinstance(target, TargetClass):
-                ClassFuzzer(target, self.args['out'], self.excludes).run(self.args['mode'])
+                ClassFuzzer(target, self.out(), self.excludes).run(self.mode())
 
-    def skip(self, target):
+    def skip_fuzzing(self, target):
         # check if filter was specified
-        if self.args['fuzzer_filter'] and not self.args['fuzzer_filter'] in target.fullname():
+        if self.fuzzer_filter() and not self.fuzzer_filter() in target.fullname():
             return True
 
         if self.excludes:
