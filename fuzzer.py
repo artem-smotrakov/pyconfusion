@@ -41,8 +41,12 @@ class BaseFunctionFuzzer:
             self.log('skip \'os\' module')
             return True
 
-        if self.function.module == 'signal':
+        if self.function.module == 'signal' or self.function.module == '_signal':
             self.log('skip \'signal\' module')
+            return True
+
+        if self.function.module == 'faulthandler':
+            self.log('skip \'faulthandler\' module')
             return True
 
         return False
@@ -171,13 +175,13 @@ class SmartFunctionFuzzer: pass
 # and try to call a fucntion with 1, 2, ..., N parameters and fuzz all of them
 class DumbFunctionFuzzer(BaseFunctionFuzzer):
 
-    def __init__(self, function, path = None):
+    def __init__(self, function, path = None, max_params = 3):
         super().__init__(function, path)
+        self.max_params = max_params
 
     def fuzz(self):
         self.log('run fuzzing for function: ' + self.function.name)
-        max_parameter_guess = 3
-        for n in range(1, max_parameter_guess+1): self.fuzz_unknown_parameters(n)
+        for n in range(1, self.max_params+1): self.fuzz_unknown_parameters(n)
 
     def fuzz_unknown_parameters(self, n):
         self.log('run fuzzing for function {0:s} with {1:d} parameters'.format(self.function.name, n))

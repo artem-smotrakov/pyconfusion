@@ -28,6 +28,7 @@ class Task:
     def out(self):      return self.args['out']
     def finder_filter(self): return self.args['finder_filter']
     def fuzzer_filter(self): return self.args['fuzzer_filter']
+    def max_params(self):    return self.args['max_params']
 
     def run(self):
         if   self.no_src() == None: raise Exception('Sources not specified')
@@ -49,7 +50,7 @@ class Task:
             if self.skip_fuzzing(target): continue
 
             if isinstance(target, TargetFunction):
-                DumbFunctionFuzzer(target, self.out()).run()
+                DumbFunctionFuzzer(target, self.out(), self.max_params()).run()
             # TODO: support class fuzzing
 
     def fuzz_clinic(self):
@@ -79,15 +80,18 @@ class Task:
         return False
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src',  help='path to sources', default='./')
-parser.add_argument('--command', help='what do you want to do?',
+parser.add_argument('--src',            help='path to sources', default='./')
+parser.add_argument('--command',        help='what do you want to do?',
                     choices=['clinic_targets', 'clinic_fuzzer', 'c_targets', 'c_fuzzer'],
                     default='c_targets')
-parser.add_argument('--mode', help='how do you want to do?', choices=['light', 'hard'], default='light')
+parser.add_argument('--mode',           help='how do you want to do?',
+                    choices=['light', 'hard'], default='light')
 parser.add_argument('--fuzzer_filter',  help='target filter for fuzzer', default='')
 parser.add_argument('--finder_filter',  help='file filter for finder', default='')
-parser.add_argument('--out', help='path to directory for generated tests')
-parser.add_argument('--exclude', help='what do you want to exclude?')
+parser.add_argument('--out',            help='path to directory for generated tests')
+parser.add_argument('--exclude',        help='what do you want to exclude?')
+parser.add_argument('--max_params',     help='max number of parameters to try',
+                    type=int, default=3)
 
 # create task
 task = Task(parser.parse_args())
