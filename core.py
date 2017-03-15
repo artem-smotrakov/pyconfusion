@@ -589,7 +589,7 @@ class TargetFunction(TargetCallable):
         super().__init__(filename, module, name)
 
     def fullname(self):
-        return self.name
+        return self.module + '.' + self.name
 
 class TargetClass:
 
@@ -704,7 +704,7 @@ class TargetMethod(TargetCallable):
         self.clazz = clazz
 
     def fullname(self):
-        return self.name
+        return self.module + '.' + self.name
 
 class TestDump:
 
