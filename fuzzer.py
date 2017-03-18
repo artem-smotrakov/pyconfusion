@@ -173,11 +173,32 @@ class HardFunctionFuzzer(BaseFunctionFuzzer):
     def log(self, message):
         core.print_with_prefix('HardFunctionFuzzer', message)
 
-# TODO: it can behave like DumbFunctionFuzzer, but analyze exceptions and use this info
-class SmartFunctionFuzzer: pass
+# TODO: support different bindings of parameters
+#       https://docs.python.org/3/library/inspect.html#inspect.Parameter.kind
+# TODO: fuzz different number of parameters - range(self.function.number_of_required_parameters(), self.number_of_parameters())
+class SmartFunctionFuzzer(BaseFunctionFuzzer):
+
+    def __init__(self, function, path = None):
+        super().__init__(function, path)
+
+    def fuzz(self):
+        if self.function.has_unknown_parameters():
+            self.warn('skip function with unknown parameters: ' + self.function.name)
+            return
+        self.log('run fuzzing for function {0:s} with {1:d} parameters'
+                 .format(self.function.name, self.function.number_of_parameters()))
+        caller = FunctionCaller(self.function)
+        HardFunctionFuzzer(self.function, self.path).fuzz_hard(caller, 1, self.function.number_of_parameters())
+
+    def log(self, message):
+        core.print_with_prefix('SmartFunctionFuzzer', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
 
 # this fuzzer assumes that number of parameters is unknown,
 # and try to call a fucntion with 1, 2, ..., N parameters and fuzz all of them
+# DEPRECATED
 class DumbFunctionFuzzer(BaseFunctionFuzzer):
 
     def __init__(self, function, path = None, max_params = 3):

@@ -3,7 +3,7 @@
 import argparse
 import core
 
-from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer, DumbFunctionFuzzer
+from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer, SmartFunctionFuzzer
 from fuzzer import ClassFuzzer
 from core import *
 from targets import *
@@ -50,7 +50,7 @@ class Task:
             if self.skip_fuzzing(target): continue
 
             if isinstance(target, TargetFunction):
-                DumbFunctionFuzzer(target, self.out(), self.max_params()).run()
+                SmartFunctionFuzzer(target, self.out()).run()
             # TODO: support class fuzzing
 
     def fuzz_clinic(self):
