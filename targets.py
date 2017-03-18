@@ -197,10 +197,13 @@ class CTargetFinder:
     def add_function(self, filename, module, func_name):
         func = TargetFunction(filename, module, func_name)
         # TODO: can we figure out parameter types here?
+        # TODO: deprecate ParameterType
+        # TODO: try to use __text_signature__ attribute if get_function_signature() fails
         signature = get_function_signature(module, func_name)
         if signature:
             func.no_unknown_parameters()
-            for param in signature.parameters: func.add_parameter(ParameterType.any_object)
+            for param in signature.parameters:
+                func.add_parameter(ParameterType.any_object, signature.parameters[param].default)
         else: self.warn('could not get a signature of function: ' + func_name)
         self.targets.append(func)
         if func.has_unknown_parameters():   self.log('found function with unknown parameters: ' + func_name)
