@@ -100,6 +100,20 @@ result = callable({1})
     exec(code, {}, loc)
     return loc['result']
 
+def get_function_signature(module, name):
+    loc = {}
+    fullname = module + '.' + name
+    code = """
+signature = None
+try:
+    import {0}
+    import inspect
+    signature = inspect.signature({1})
+except: pass
+""".format(module, fullname)
+    exec(code, {}, loc)
+    return loc['signature']
+
 class CTargetFinder:
 
     def __init__(self, path):
@@ -181,8 +195,17 @@ class CTargetFinder:
         self.log('found class: ' + class_name)
 
     def add_function(self, filename, module, func_name):
-        self.log('found function: ' + func_name)
-        self.targets.append(TargetFunction(filename, module, func_name))
+        func = TargetFunction(filename, module, func_name)
+        # TODO: can we figure out parameter types here?
+        signature = get_function_signature(module, func_name)
+        if signature:
+            func.no_unknown_parameters()
+            for param in signature.parameters: func.add_parameter(ParameterType.any_object)
+        else: self.warn('could not get a signature of function: ' + func_name)
+        self.targets.append(func)
+        if func.has_unknown_parameters():   self.log('found function with unknown parameters: ' + func_name)
+        elif func.has_no_parameters():      self.log('found function with no parameters: ' + func_name)
+        else:                               self.log('found function with {0:d} parameters: {1:s}'.format(func.number_of_parameters(), func_name))
 
     # DEPRECATED
     def look_for_module_functions(self, filename, pointer, module):
