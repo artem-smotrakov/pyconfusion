@@ -39,11 +39,66 @@ def contains_all(string, values=[]):
             return False
     return True
 
-def extract_fucn_name(line):
+def extract_func_name(line):
     tmp = line.split(',')
     if tmp == None or len(tmp) == 0:
         return None
     return extract(tmp[0], '"', '"')
+
+def is_module(parent_module, module):
+    loc = {}
+    fullname = parent_module + '.' + module
+    code = """
+result = False
+try:
+    import {0}
+    inspect_result = False
+    isinstance_result = False
+    try:
+        import inspect
+        inspect_result = inspect.ismodule({1})
+    except: pass
+    try:
+        from types import ModuleType
+        isinstance_result = isinstance({2}, ModuleType)
+    except: pass
+    result = inspect_result or isinstance_result
+except: pass
+""".format(parent_module, fullname, fullname)
+    exec(code, {}, loc)
+    return loc['result']
+
+def is_class(module, name):
+    loc = {}
+    fullname = module + '.' + name
+    code = """
+result = False
+try:
+    import {0}
+    inspect_result = False
+    isinstance_result = False
+    try:
+        import inspect
+        inspect_result = inspect.isclass({1})
+    except: pass
+    try:
+        isinstance_result = isinstance({2}, type)
+    except: pass
+    result = inspect_result or isinstance_result
+except: pass
+""".format(module, fullname, fullname)
+    exec(code, {}, loc)
+    return loc['result']
+
+def is_function(module, name):
+    loc = {}
+    fullname = fullname = module + '.' + name
+    code = """
+import {0}
+result = callable({1})
+""".format(module, fullname)
+    exec(code, {}, loc)
+    return loc['result']
 
 class CTargetFinder:
 
@@ -51,6 +106,8 @@ class CTargetFinder:
         self.path = path
 
     def run(self, filter):
+        # TODO: look for classes and methods
+        self.warn('CTargetFinder looks only for functions in native modules')
         targets = []
         self.contents = {}
 
@@ -68,20 +125,14 @@ class CTargetFinder:
 
     def parse_c_file(self, filename):
         self.log('parse file: ' + filename)
-        self.look_for_modules(filename)
+        self.look_for_native_modules(filename)
 
-    def look_for_modules(self, filename):
+    def look_for_native_modules(self, filename):
         content = self.contents[filename]
-        self.modules = {}
+        self.native_modules = []
         for line in content:
             if 'PyModule_Create' in line:
                 # extract variable name
-                variable = extract(line, '*', '=')
-                if variable == None:
-                    variable = extract(line, None, '=')
-                if variable == None:
-                    self.warn('could not extract module variable name: ' + line)
-                    continue
                 # extract pointer to module structure
                 pointer = extract(line, '&', ')')
                 if pointer == None:
@@ -92,9 +143,9 @@ class CTargetFinder:
                 if module_name == None:
                     self.warn('could not find module name for pointer: ' + pointer)
                     continue
-                self.log('found module: {0:s} (variable: {1:s})'.format(module_name, variable))
-                self.modules[variable] = module_name
-                self.look_for_module_functions(filename, pointer, module_name)
+                self.log('found module: {0:s}'.format(module_name))
+                self.native_modules.append(module_name)
+                self.look_for_targets(filename, module_name)
 
     def look_for_module_name(self, filename, pointer):
         content = self.contents[filename]
@@ -108,6 +159,32 @@ class CTargetFinder:
             if 'PyModuleDef' in line and pointer in line:
                 found_structure = True
 
+    def look_for_targets(self, filename, module):
+        try:
+            __import__(module)
+        except ModuleNotFoundError as err:
+            self.warn('{0}'.format(err))
+            return
+        loc = {}
+        code = 'import {0:s}\nr = dir({1:s})'.format(module, module)
+        exec(code, {}, loc)
+        for item in loc['r']:
+            if is_module(module, item):         self.add_module(filename, module, item)
+            elif is_class(module, item):        self.add_class(filename, module, item)
+            elif is_function(module, item):     self.add_function(filename, module, item)
+            else: self.warn('unknown item: ' + item)
+
+    def add_module(self, filename, parent_module, module):
+        self.log('found module: ' + module)
+
+    def add_class(self, filename, module, class_name):
+        self.log('found class: ' + class_name)
+
+    def add_function(self, filename, module, func_name):
+        self.log('found function: ' + func_name)
+        self.targets.append(TargetFunction(filename, module, func_name))
+
+    # DEPRECATED
     def look_for_module_functions(self, filename, pointer, module):
         content = self.contents[filename]
         found_structure = False
@@ -134,11 +211,11 @@ class CTargetFinder:
                 func_name = None
                 no_args = False
                 if line.startswith('{'):
-                    func_name = extract_fucn_name(line)
+                    func_name = extract_func_name(line)
                     no_args = 'METH_NOARGS' in line
                 else:
                     for define_line in self.look_for_define(line):
-                        if func_name == None: func_name = extract_fucn_name(define_line)
+                        if func_name == None: func_name = extract_func_name(define_line)
                         if not no_args: no_args = 'METH_NOARGS' in define_line
                 if func_name == None:
                     self.warn('could not extract function name: ' + line)
@@ -182,6 +259,7 @@ class ClinicParserState(Enum):
     inside_clinic_input = 2
     expect_end_generated_code = 3
 
+# DEPRECATED
 class ClinicTargetFinder:
 
     def __init__(self, path):
