@@ -25,6 +25,8 @@ fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', '
                   '[(0), (0)]', '([0], [0])',
                   ParameterValue('A()', 'class A: pass'))
 
+general_parameter_values = ('42', '42.3', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '"test"')
+
 class BaseFunctionFuzzer:
 
     def __init__(self, function, path = None):
@@ -173,6 +175,60 @@ class HardFunctionFuzzer(BaseFunctionFuzzer):
     def log(self, message):
         core.print_with_prefix('HardFunctionFuzzer', message)
 
+class ParameterTypeFinder:
+
+    def __init__(self, function):
+        self.function = function
+        self.found = False
+
+    def success(self):      return self.found
+    def get_caller(self):   return self.caller
+
+    def run(self):
+        self.log('look for correct parameters for function: ' + self.function.name)
+        self.caller = FunctionCaller(self.function)
+        self.search(self.caller, 1, self.caller.function.number_of_parameters())
+
+    def search(self, caller, current_arg_number, number_of_parameters):
+        if self.found: return
+        if current_arg_number == number_of_parameters:
+            if self.could_set_default_value(caller, current_arg_number):
+                if self.could_make_successful_call(caller): return
+            else:
+                for value in general_parameter_values:
+                    caller.set_parameter_value(current_arg_number, value)
+                    if self.could_make_successful_call(caller): return
+        else:
+            if self.could_set_default_value(caller, current_arg_number):
+                self.search(caller, current_arg_number + 1, number_of_parameters)
+            else:
+                for value in general_parameter_values:
+                    caller.set_parameter_value(current_arg_number, value)
+                    self.search(caller, current_arg_number + 1, number_of_parameters)
+
+    def could_set_default_value(self, caller, current_arg_number):
+        if self.function.has_default_value(current_arg_number):
+            value = self.function.get_default_value(current_arg_number)
+            caller.set_parameter_value(current_arg_number, value)
+            return True
+        else: return False
+
+    def could_make_successful_call(self, caller):
+        try:
+            caller.call()
+            self.log('found correct parameter values: {0}'.format(caller.parameter_values))
+            self.found = True
+            return True
+        except Exception as err:
+            self.log('exception {0}: {1}'.format(type(err), err))
+        return False
+
+    def log(self, message):
+        core.print_with_prefix('ParameterTypeFinder', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
+
 # TODO: support different bindings of parameters
 #       https://docs.python.org/3/library/inspect.html#inspect.Parameter.kind
 # TODO: fuzz different number of parameters - range(self.function.number_of_required_parameters(), self.number_of_parameters())
@@ -185,10 +241,25 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
         if self.function.has_unknown_parameters():
             self.warn('skip function with unknown parameters: ' + self.function.name)
             return
+        # first, try to find parameter values which lead to a successful invocation
+        finder = ParameterTypeFinder(self.function)
+        finder.run()
+        if not finder.success():
+            self.warn('could not find correct parameter values, skip')
+            return
         self.log('run fuzzing for function {0:s} with {1:d} parameters'
                  .format(self.function.name, self.function.number_of_parameters()))
-        caller = FunctionCaller(self.function)
-        HardFunctionFuzzer(self.function, self.path).fuzz_hard(caller, 1, self.function.number_of_parameters())
+        successful_caller = finder.get_caller()
+        for parameter_index in range(1, self.function.number_of_parameters()+1):
+            caller = successful_caller.clone()
+            for value in fuzzing_values:
+                caller.set_parameter_value(parameter_index, value)
+                self.dump.store(caller)
+                try:
+                    caller.call()
+                    self.log('wow, it succeded')
+                except Exception as err:
+                    self.log('exception {0}: {1}'.format(type(err), err))
 
     def log(self, message):
         core.print_with_prefix('SmartFunctionFuzzer', message)

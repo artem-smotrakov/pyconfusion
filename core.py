@@ -315,7 +315,15 @@ $module_name.$function_name($function_arguments)
             self.parameter_values.append(ParameterType.default_value(parameter_type))
         self.prepare()
 
+    def clone(self):
+        cloned = FunctionCaller(self.function)
+        cloned.parameter_values = []
+        for value in self.parameter_values: cloned.parameter_values.append(value)
+        return cloned
+
     def prepare(self):
+        if self.function.has_unknown_parameters():
+            raise Exception('function has unknown parameters')
         if self.function.number_of_parameters() != len(self.parameter_values):
             raise Exception('number of parameters is not equal to number of values')
 
@@ -576,6 +584,8 @@ class TargetCallable:
     def has_no_parameters(self): return not self.unknown_parameters and len(self.parameter_types) == 0
     def has_unknown_parameters(self): return self.unknown_parameters
     def no_unknown_parameters(self): self.unknown_parameters = False
+    def has_default_value(self, index): return self.default_values[index-1] != None
+    def get_default_value(self, index): return self.default_values[index-1]
     def reset_parameter_types(self):
         self.parameter_types = []
         self.default_values = []
