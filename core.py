@@ -571,17 +571,27 @@ class TargetCallable:
         self.name = name
         self.unknown_parameters = True
         self.parameter_types = []
+        self.default_values = []
 
     def has_no_parameters(self): return not self.unknown_parameters and len(self.parameter_types) == 0
     def has_unknown_parameters(self): return self.unknown_parameters
     def no_unknown_parameters(self): self.unknown_parameters = False
-    def reset_parameter_types(self): self.parameter_types = []
+    def reset_parameter_types(self):
+        self.parameter_types = []
+        self.default_values = []
 
     def number_of_parameters(self):
         return len(self.parameter_types)
 
-    def add_parameter(self, parameter_type):
+    def number_of_required_parameters(self):
+        result = 0
+        for value in self.default_values:
+            if value == None: result = result + 1
+        return result
+
+    def add_parameter(self, parameter_type, default_value = None):
         self.parameter_types.append(parameter_type)
+        self.default_values.append(None)
 
 class TargetFunction(TargetCallable):
 
