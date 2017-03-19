@@ -27,12 +27,49 @@ fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', '
 
 general_parameter_values = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '42.3')
 
-class BaseFunctionFuzzer:
+# base class for fuzzers, contains common methods
+class BaseFuzzer:
+
+    def __init__(self, path = None):
+        self.dump = TestDump(path)
+
+    def run_and_dump_code(self, caller):
+        result = False
+        self.dump.store(caller)
+        try:
+            caller.call()
+            self.log('wow, it succeded')
+            result = True
+        except Exception as err:
+            self.log('exception {0}: {1}'.format(type(err), err))
+        Stats.get().increment_tests()
+        return result
+
+    # returns a subsequent method caller
+    # this method should be implemented in a child class which uses try_coroutine_fuzzing()
+    def create_subsequent_method_fuzzer(self, caller, path, method_name, parameter_types):
+        raise Exception('should not be called')
+
+    def try_coroutine_fuzzing(self):
+        checker = CoroutineChecker(self.caller)
+        if checker.is_coroutine():
+            self.log('coroutine found')
+            close_caller = SubsequentMethodCaller(self.caller, 'close')
+            self.run_and_dump_code(close_caller)
+            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
+            fuzzer.run()
+
+            # TODO: what does it expect in the third parameter? TracebackException?
+            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'throw',
+                                                          [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
+            fuzzer.run()
+
+class BaseFunctionFuzzer(BaseFuzzer):
 
     def __init__(self, function, path = None):
+        super().__init__(path)
         self.function = function
         self.path = path
-        self.dump = TestDump(path)
 
     def skip(self):
         if self.function.has_no_parameters():
@@ -175,9 +212,11 @@ class HardFunctionFuzzer(BaseFunctionFuzzer):
     def log(self, message):
         core.print_with_prefix('HardFunctionFuzzer', message)
 
-class ParameterTypeFinder:
+# stops fuzzing when it finds a set of parameters which results to successful call
+class CorrectParametersFuzzer(BaseFuzzer):
 
-    def __init__(self, function):
+    def __init__(self, function, path = None):
+        super().__init__(path)
         self.function = function
         self.found = False
 
@@ -215,17 +254,14 @@ class ParameterTypeFinder:
         else: return False
 
     def could_make_successful_call(self, caller):
-        try:
-            caller.call()
+        self.found = self.run_and_dump_code(caller)
+        if self.found:
             self.log('found correct parameter values: {0}'.format(caller.parameter_values))
-            self.found = True
             return True
-        except Exception as err:
-            self.log('exception {0}: {1}'.format(type(err), err))
-        return False
+        else: return False
 
     def log(self, message):
-        core.print_with_prefix('ParameterTypeFinder', message)
+        core.print_with_prefix('CorrectParametersFuzzer', message)
 
     def warn(self, message):
         self.log('warning: {0:s}'.format(message))
@@ -244,10 +280,10 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
             return
         # first, try to find parameter values which lead to a successful invocation
         if self.function.number_of_parameters() > 1:
-            finder = ParameterTypeFinder(self.function)
+            finder = CorrectParametersFuzzer(self.function, self.path)
             finder.run()
             if not finder.success():
-                self.warn('could not find correct parameter values, skip')
+                self.warn('could not find correct parameter values, skip: ' + self.function.fullname())
                 return
             successful_caller = finder.get_caller()
         else: successful_caller = FunctionCaller(self.function)
@@ -257,12 +293,7 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
             caller = successful_caller.clone()
             for value in fuzzing_values:
                 caller.set_parameter_value(parameter_index, value)
-                self.dump.store(caller)
-                try:
-                    caller.call()
-                    self.log('wow, it succeded')
-                except Exception as err:
-                    self.log('exception {0}: {1}'.format(type(err), err))
+                self.run_and_dump_code(caller)
 
     def log(self, message):
         core.print_with_prefix('SmartFunctionFuzzer', message)
@@ -379,40 +410,6 @@ class ClassFuzzer:
 
     def log(self, message):
         core.print_with_prefix('ClassFuzzer', message)
-
-# base class for fuzzers, contains common methods
-class BaseFuzzer:
-
-    def __init__(self, path = None):
-        self.dump = TestDump(path)
-
-    def run_and_dump_code(self, caller):
-        self.dump.store(caller)
-        try:
-            caller.call()
-            self.log('wow, it succeded')
-        except Exception as err:
-            self.log('exception {0}: {1}'.format(type(err), err))
-        Stats.get().increment_tests()
-
-    # returns a subsequent method caller
-    # this method should be implemented in a child class which uses try_coroutine_fuzzing()
-    def create_subsequent_method_fuzzer(self, caller, path, method_name, parameter_types):
-        raise Exception('should not be called')
-
-    def try_coroutine_fuzzing(self):
-        checker = CoroutineChecker(self.caller)
-        if checker.is_coroutine():
-            self.log('coroutine found')
-            close_caller = SubsequentMethodCaller(self.caller, 'close')
-            self.run_and_dump_code(close_caller)
-            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
-            fuzzer.run()
-
-            # TODO: what does it expect in the third parameter? TracebackException?
-            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'throw',
-                                                          [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
-            fuzzer.run()
 
 class LightMethodFuzzer(BaseFuzzer):
 
