@@ -655,7 +655,7 @@ class TargetMethod(TargetCallable):
         self.clazz = clazz
 
     def fullname(self):
-        return self.module + '.' + self.name
+        return self.clazz.name + '.' + self.name
 
 class TestDump:
 
