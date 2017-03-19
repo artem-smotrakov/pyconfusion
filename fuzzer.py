@@ -320,11 +320,11 @@ class SmartClassFuzzer(BaseFuzzer):
         if not finder.success():
             self.warn('could not create an instance of "{0:s}" class, skip fuzzing'. format(self.clazz.name))
             return
-        self.constructor_caller = finder.get_caller()
+        constructor_caller = finder.get_caller()
 
         # start actual fuzzing
         for method in self.clazz.get_methods():
-            SmartMethodFuzzer(method, self.path, self.excludes).run()
+            SmartMethodFuzzer(method, constructor_caller, self.path, self.excludes).run()
 
     def log(self, message):
         core.print_with_prefix('SmartClassFuzzer', message)
@@ -334,16 +334,37 @@ class SmartClassFuzzer(BaseFuzzer):
 
 class SmartMethodFuzzer(BaseFuzzer):
 
-    def __init__(self, method, path = None, excludes = None):
+    def __init__(self, method, constructor_caller, path = None, excludes = None):
         super().__init__(path)
         self.method = method
+        self.constructor_caller = constructor_caller
         self.path = path
         self.excludes = excludes
 
     def run(self):
         if self.skip(self.method): self.log('skip fuzzing of ' + self.method.fullname())
+        if self.method.has_unknown_parameters():
+            self.warn('skip function with unknown parameters: ' + self.method.fullname())
+            return
         self.log('try to fuzz method: ' + self.method.fullname())
+        # first, try to find parameter values which lead to a successful invocation
+        if self.method.number_of_parameters() > 1:
+            finder = CorrectParametersFuzzer(MethodCaller(self.method, self.constructor_caller), self.path)
+            finder.run()
+            if not finder.success():
+                self.warn('could not find correct parameter values, skip: ' + self.method.fullname())
+                return
+            successful_caller = finder.get_caller()
+        else: successful_caller = MethodCaller(self.method, self.constructor_caller)
+        self.log('run fuzzing for method {0:s} with {1:d} parameters'
+                 .format(self.method.fullname(), self.method.number_of_parameters()))
+        for parameter_index in range(1, self.method.number_of_parameters()+1):
+            caller = successful_caller.clone()
+            for value in fuzzing_values:
+                caller.set_parameter_value(parameter_index, value)
+                self.run_and_dump_code(caller)
 
+    # TODO: move it to BaseFuzzer
     def skip(self, target):
         if self.excludes:
             if isinstance(self.excludes, list):

@@ -458,6 +458,11 @@ r = object.$method_name($method_arguments)
         # to prevent data lose if python crashes
         self.prepare()
 
+    def clone(self):
+        cloned = MethodCaller(self.method, self.constructor_caller)
+        cloned.caller = self.caller.clone()
+        return cloned
+
     def target(self):
         return self.method
 
@@ -491,6 +496,9 @@ r = object.$method_name($method_arguments)
 
     def set_parameter_value(self, arg_number, value):
         self.caller.set_parameter_value(arg_number, value)
+
+    def get_parameter_values(self):
+        return self.caller.get_parameter_values()
 
     def call(self):
         self.prepare()
