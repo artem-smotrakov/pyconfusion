@@ -205,6 +205,7 @@ class ParameterTypeFinder:
                 for value in general_parameter_values:
                     caller.set_parameter_value(current_arg_number, value)
                     self.search(caller, current_arg_number + 1, number_of_parameters)
+                    if self.found: return
 
     def could_set_default_value(self, caller, current_arg_number):
         if self.function.has_default_value(current_arg_number):
