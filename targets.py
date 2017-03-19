@@ -154,25 +154,29 @@ except: pass
 
 class TargetFinder:
 
-    def __init__(self, path):
+    NO_SRC = 'no sources'
+
+    def __init__(self, path, modules):
         self.path = path
+        self.modules = modules
 
     def run(self, filter):
-        # TODO: look for classes and methods
-        self.warn('CTargetFinder looks only for functions in native modules')
         self.contents = {}
-
-        for filename in look_for_c_files(self.path):
-            self.contents[filename] = read_file(filename)
-
         self.classes = []
         self.targets = []
         self.native_modules = []
-        for filename in self.contents:
-            if not filter in filename:
-                self.log('skip ' + filename)
-                continue
-            self.parse_c_file(filename)
+
+        if self.path:
+            for filename in look_for_c_files(self.path):
+                self.contents[filename] = read_file(filename)
+            for filename in self.contents:
+                if not filter in filename:
+                    self.log('skip ' + filename)
+                    continue
+                self.parse_c_file(filename)
+
+        if self.modules:
+            for module in self.modules: self.look_for_targets(TargetFinder.NO_SRC, module)
 
         return self.targets
 
@@ -215,7 +219,7 @@ class TargetFinder:
         try:
             __import__(module)
         except ModuleNotFoundError as err:
-            self.warn('{0}'.format(err))
+            self.warn('could not import module: {0}'.format(err))
             return
         for item in browse_module(module):
             if is_module(module, item):         self.add_module(filename, module, item)
@@ -263,7 +267,7 @@ class TargetFinder:
         else: self.warn('could not get a signature: ' + target_callable.fullname())
 
     def log(self, message):
-        print_with_prefix('CTargetFinder', message)
+        print_with_prefix('TargetFinder', message)
 
     def warn(self, message):
         self.log('warning: {0:s}'.format(message))

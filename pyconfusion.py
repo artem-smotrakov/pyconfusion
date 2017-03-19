@@ -15,8 +15,11 @@ class Task:
     def __init__(self, args):
         self.args = vars(args)
         self.excludes = []
+        self.modules = []
         if self.args['exclude']:
             self.excludes = self.args['exclude'].split(',')
+        if self.args['modules']:
+            self.modules = self.args['modules'].split(',')
 
     def command(self):  return self.args['command']
     def src(self):      return self.args['src']
@@ -27,7 +30,6 @@ class Task:
     def out(self):      return self.args['out']
     def finder_filter(self): return self.args['finder_filter']
     def fuzzer_filter(self): return self.args['fuzzer_filter']
-    def max_params(self):    return self.args['max_params']
 
     def run(self):
         if   self.no_src() == None: raise Exception('Sources not specified')
@@ -36,7 +38,7 @@ class Task:
         else: raise Exception('Unknown command: ' + self.command())
 
     def search_targets(self):
-        return TargetFinder(self.src()).run(self.finder_filter())
+        return TargetFinder(self.src(), self.modules).run(self.finder_filter())
 
     def fuzz(self):
         for target in self.search_targets():
@@ -70,8 +72,7 @@ parser.add_argument('--fuzzer_filter',  help='target filter for fuzzer', default
 parser.add_argument('--finder_filter',  help='file filter for finder', default='')
 parser.add_argument('--out',            help='path to directory for generated tests')
 parser.add_argument('--exclude',        help='what do you want to exclude?')
-parser.add_argument('--max_params',     help='max number of parameters to try',
-                    type=int, default=3)
+parser.add_argument('--modules',        help='list of modules to fuzz', default='')
 
 # create task
 task = Task(parser.parse_args())
