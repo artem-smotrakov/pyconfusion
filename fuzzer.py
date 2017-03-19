@@ -91,44 +91,6 @@ class BaseFunctionFuzzer(BaseFuzzer):
 
         return False
 
-    # check if parameter types are correct
-    # it tries to call specified function with correct values of its parameter types
-    # returns true it the call suceeded
-    def check_correct_parameter_type(self):
-        self.log('check for correct parameter types')
-
-        parameter_str = ''
-        arg_number = 1
-        for parameter_type in self.function.parameter_types:
-            parameter_str += str(parameter_type)
-            if arg_number != self.function.number_of_parameters():
-                parameter_str +=  ', '
-            arg_number = arg_number + 1
-
-        self.log('number of parameters: {0:d}'.format(self.function.number_of_parameters()))
-        self.log('parameter types: ' + parameter_str)
-
-        caller = FunctionCaller(self.function)
-        success = False
-        try:
-            caller.call()
-            success = True
-        except TypeError as err:
-            self.log('warning: unexpected TypeError exception: {0}'.format(err))
-            self.log('skip fuzzing')
-        except AttributeError as err:
-            self.log('warning: unexpected AttributeError exception: {0}'.format(err))
-            self.log('looks like this API doesn\'t exist, quit')
-        except ModuleNotFoundError as err:
-            self.log('warning: unexpected ModuleNotFoundError exception: {0}'.format(err))
-            self.log('looks like this module doesn\'t exist, quit')
-        except Exception as err:
-            # any other exception is considered as extected
-            self.log('expected exception {0}: {1}'.format(type(err), err))
-            success = True
-
-        return success
-
     def run(self):
         if self.skip(): return
         self.log('try to fuzz function: ' + self.function.name)
