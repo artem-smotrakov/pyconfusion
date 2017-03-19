@@ -215,18 +215,17 @@ class HardFunctionFuzzer(BaseFunctionFuzzer):
 # stops fuzzing when it finds a set of parameters which results to successful call
 class CorrectParametersFuzzer(BaseFuzzer):
 
-    def __init__(self, function, path = None):
+    def __init__(self, caller, path = None):
         super().__init__(path)
-        self.function = function
+        self.caller = caller
         self.found = False
 
     def success(self):      return self.found
     def get_caller(self):   return self.caller
 
     def run(self):
-        self.log('look for correct parameters for function: ' + self.function.name)
-        self.caller = FunctionCaller(self.function)
-        self.search(self.caller, 1, self.caller.function.number_of_parameters())
+        self.log('look for correct parameters for: ' + self.caller.target().name)
+        self.search(self.caller, 1, self.caller.target().number_of_parameters())
 
     def search(self, caller, current_arg_number, number_of_parameters):
         if self.found: return
@@ -247,8 +246,8 @@ class CorrectParametersFuzzer(BaseFuzzer):
                     if self.found: return
 
     def could_set_default_value(self, caller, current_arg_number):
-        if self.function.has_default_value(current_arg_number):
-            value = self.function.get_default_value(current_arg_number)
+        if self.caller.target().has_default_value(current_arg_number):
+            value = self.caller.target().get_default_value(current_arg_number)
             caller.set_parameter_value(current_arg_number, value)
             return True
         else: return False
@@ -256,7 +255,7 @@ class CorrectParametersFuzzer(BaseFuzzer):
     def could_make_successful_call(self, caller):
         self.found = self.run_and_dump_code(caller)
         if self.found:
-            self.log('found correct parameter values: {0}'.format(caller.parameter_values))
+            self.log('found correct parameter values: {0}'.format(caller.get_parameter_values()))
             return True
         else: return False
 
@@ -280,7 +279,7 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
             return
         # first, try to find parameter values which lead to a successful invocation
         if self.function.number_of_parameters() > 1:
-            finder = CorrectParametersFuzzer(self.function, self.path)
+            finder = CorrectParametersFuzzer(FunctionCaller(self.function), self.path)
             finder.run()
             if not finder.success():
                 self.warn('could not find correct parameter values, skip: ' + self.function.fullname())
@@ -297,6 +296,68 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
 
     def log(self, message):
         core.print_with_prefix('SmartFunctionFuzzer', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
+
+class SmartClassFuzzer(BaseFuzzer):
+
+    def __init__(self, clazz, path = None, excludes = None):
+        super().__init__(path)
+        self.clazz = clazz
+        self.path = path
+        self.excludes = excludes
+
+    def run(self):
+        self.log('try to fuzz class: ' + self.clazz.name)
+        self.log('sources: ' + self.clazz.filename)
+
+        # make sure that we can call a constructor,
+        # and get an instance of the class
+        # if we can't, we can't continue fuzzing
+        finder = CorrectParametersFuzzer(ConstructorCaller(self.clazz))
+        finder.run()
+        if not finder.success():
+            self.warn('could not create an instance of "{0:s}" class, skip fuzzing'. format(self.clazz.name))
+            return
+        self.constructor_caller = finder.get_caller()
+
+        # start actual fuzzing
+        for method in self.clazz.get_methods():
+            SmartMethodFuzzer(method, self.path, self.excludes).run()
+
+    def log(self, message):
+        core.print_with_prefix('SmartClassFuzzer', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
+
+class SmartMethodFuzzer(BaseFuzzer):
+
+    def __init__(self, method, path = None, excludes = None):
+        super().__init__(path)
+        self.method = method
+        self.path = path
+        self.excludes = excludes
+
+    def run(self):
+        if self.skip(self.method): self.log('skip fuzzing of ' + self.method.fullname())
+        self.log('try to fuzz method: ' + self.method.fullname())
+
+    def skip(self, target):
+        if self.excludes:
+            if isinstance(self.excludes, list):
+                for exclude in self.excludes:
+                    if exclude in target.fullname():
+                        return True
+            else:
+                if self.excludes in target.fullname():
+                    return True
+
+        return False
+
+    def log(self, message):
+        core.print_with_prefix('SmartMethodFuzzer', message)
 
     def warn(self, message):
         self.log('warning: {0:s}'.format(message))
@@ -328,7 +389,7 @@ class DumbFunctionFuzzer(BaseFunctionFuzzer):
     def log(self, message):
         core.print_with_prefix('DumbFunctionFuzzer', message)
 
-# TODO: split it to LightClassFuzzer and HardClassFuzzer
+# DEPRECATED
 class ClassFuzzer:
 
     def __init__(self, clazz, path = None, excludes = None):

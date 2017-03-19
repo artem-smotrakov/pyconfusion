@@ -3,7 +3,7 @@
 import argparse
 import core
 
-from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer, SmartFunctionFuzzer
+from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer, SmartFunctionFuzzer, SmartClassFuzzer
 from fuzzer import ClassFuzzer
 from core import *
 from targets import *
@@ -38,6 +38,7 @@ class Task:
         elif self.command() == 'c_fuzzer':      self.fuzz_c()
         else: raise Exception('Unknown command: ' + self.command())
 
+    # DEPRECATED
     def search_clinic_targets(self):
         return ClinicTargetFinder(self.src()).run(self.finder_filter())
 
@@ -51,8 +52,10 @@ class Task:
 
             if isinstance(target, TargetFunction):
                 SmartFunctionFuzzer(target, self.out()).run()
-            # TODO: support class fuzzing
+            if isinstance(target, TargetClass):
+                SmartClassFuzzer(target, self.out(), self.excludes).run()
 
+    # DEPRECATED
     def fuzz_clinic(self):
         for target in self.search_clinic_targets():
             # check if the line matches specified filter

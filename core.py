@@ -315,6 +315,9 @@ $module_name.$function_name($function_arguments)
             self.parameter_values.append(ParameterType.default_value(parameter_type))
         self.prepare()
 
+    def target(self):
+        return self.function
+
     def clone(self):
         cloned = FunctionCaller(self.function)
         cloned.parameter_values = []
@@ -351,9 +354,9 @@ $module_name.$function_name($function_arguments)
             arg_number = arg_number + 1
 
         template = Template(FunctionCaller.basic_template)
-        self.code = template.substitute(imports = ''.join(self.imports),
-                                        extra = ''.join(self.extra),
-                                        parameter_definitions = ''.join(self.parameter_definitions),
+        self.code = template.substitute(imports = '\n'.join(self.imports),
+                                        extra = '\n'.join(self.extra),
+                                        parameter_definitions = '\n'.join(self.parameter_definitions),
                                         module_name = self.function.module,
                                         function_name = self.function.name,
                                         function_arguments = ', '.join(self.function_arguments))
@@ -363,6 +366,9 @@ $module_name.$function_name($function_arguments)
 
         # TODO: can it be called in call()
         self.prepare()
+
+    def get_parameter_values(self):
+        return self.parameter_values
 
     def call(self):
         self.log('run the following code:\n\n' + self.code)
@@ -385,10 +391,14 @@ object = $class_name($constructor_arguments)
 
         self.constructor = clazz.get_constructor()
         if self.constructor == None:
-            raise Exception('couldn\'t find a constructor of class ' + clazz.name)
+            self.log('debug: methods = {0}'.format(self.clazz.methods))
+            raise Exception('could not find a constructor of class ' + clazz.name)
 
         self.caller = FunctionCaller(self.constructor)
         self.prepare()
+
+    def target(self):
+        return self.constructor
 
     def prepare(self):
         self.caller.prepare()
@@ -402,15 +412,20 @@ object = $class_name($constructor_arguments)
         self.constructor_arguments = list()
         self.constructor_arguments.extend(self.caller.function_arguments)
 
+        self.imports.add('from {0:s} import {1:s}'.format(self.clazz.module, self.clazz.name))
+
         template = Template(ConstructorCaller.basic_template)
-        self.code = template.substitute(imports = ''.join(self.imports),
-                                        extra = ''.join(self.extra),
-                                        parameter_definitions = ''.join(self.caller.parameter_definitions),
+        self.code = template.substitute(imports = '\n'.join(self.imports),
+                                        extra = '\n'.join(self.extra),
+                                        parameter_definitions = '\n'.join(self.caller.parameter_definitions),
                                         class_name = self.clazz.name,
                                         constructor_arguments = ', '.join(self.caller.function_arguments))
 
     def set_parameter_value(self, arg_number, value):
         self.caller.set_parameter_value(arg_number, value)
+
+    def get_parameter_values(self):
+        return self.caller.get_parameter_values()
 
     def call(self):
         self.prepare()
@@ -443,6 +458,9 @@ r = object.$method_name($method_arguments)
         # to prevent data lose if python crashes
         self.prepare()
 
+    def target(self):
+        return self.method
+
     def prepare(self, imports = set(), extra = set()):
         self.constructor_caller.prepare()
         self.caller.prepare()
@@ -462,13 +480,13 @@ r = object.$method_name($method_arguments)
         self.method_arguments = self.caller.function_arguments
 
         template = Template(MethodCaller.basic_template)
-        self.code = template.substitute(imports = ''.join(self.imports),
-                                        extra = ''.join(self.extra),
+        self.code = template.substitute(imports = '\n'.join(self.imports),
+                                        extra = '\n'.join(self.extra),
                                         class_name = self.constructor_caller.classname(),
-                                        constructor_parameter_definitions = ''.join(self.constructor_parameter_definitions),
+                                        constructor_parameter_definitions = '\n'.join(self.constructor_parameter_definitions),
                                         constructor_arguments = ', '.join(self.constructor_arguments),
                                         method_name = self.method.name,
-                                        method_parameter_definitions = ''.join(self.method_parameter_definitions),
+                                        method_parameter_definitions = '\n'.join(self.method_parameter_definitions),
                                         method_arguments = ', '.join(self.method_arguments))
 
     def set_parameter_value(self, arg_number, value):
@@ -553,7 +571,7 @@ r.$method_name($method_arguments)
 
         template = Template(SubsequentMethodCaller.template)
         self.code = template.substitute(base_caller_code = self.caller.code,
-                                        parameter_definitions = ''.join(self.parameter_definitions),
+                                        parameter_definitions = '\n'.join(self.parameter_definitions),
                                         method_name = self.method_name,
                                         method_arguments = ', '.join(self.method_arguments))
 
@@ -566,7 +584,6 @@ r.$method_name($method_arguments)
         self.parameter_values[arg_number - 1] = value
         # TODO: can it be called in call()
         self.prepare()
-
 
     def log(self, message):
         print_with_prefix('SubsequentMethodCaller', message)
@@ -619,31 +636,23 @@ class TargetClass:
         self.name = name
         self.methods = {}
 
-    def add_method_with_params(self, name, *parameter_types):
-        method = TargetMethod(name, self.module, self)
-        method.no_unknown_parameters()
-        for parameter_type in parameter_types:
-            method.add_parameter(parameter_type)
-        self.methods[name] = method
+    def add_method(self, method):
+        self.methods[method.name] = method
 
-    def add_method(self, name):
-        if name in self.methods:
-            raise Exception('Method already exists: ' + name)
-
-        method = TargetMethod(name, self.module, self)
-        self.methods[name] = method
-
-        return method
+    def get_methods(self):
+        methods = []
+        for method_name in self.methods: methods.append(self.methods[method_name])
+        return methods
 
     def fullname(self):
         return self.module + '.' + self.name
 
     def get_constructor(self):
         for method_name in self.methods:
-            if self.methods[method_name].name == '__init__':
+            if method_name == '__init__':
                 return self.methods[method_name]
 
-        return TargetMethod('__init__', self.module, self)
+        return None
 
     def has_constructor(self):
         return self.get_constructor() != None

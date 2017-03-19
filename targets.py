@@ -73,12 +73,13 @@ try:
     import {0}
     try:
         import inspect
-        result = inspect.ismodule({1})
-    except:
-        try:
-            from types import ModuleType
-            result = isinstance({2}, ModuleType)
-        except: pass
+        inspect_result = inspect.ismodule({1})
+    except: pass
+    try:
+        from types import ModuleType
+        isinstance_result = isinstance({2}, ModuleType)
+    except: pass
+    result = inspect_result or isinstance_result
 except: pass
 """.format(parent_module, fullname, fullname)
     exec(code, {}, loc)
@@ -93,11 +94,12 @@ try:
     import {0}
     try:
         import inspect
-        result = inspect.isclass({1})
-    except:
-        try:
-            result = isinstance({2}, type)
-        except: pass
+        inspect_result = inspect.isclass({1})
+    except: pass
+    try:
+        isinstance_result = isinstance({2}, type)
+    except: pass
+    result = inspect_result or isinstance_result
 except: pass
 """.format(module, fullname, fullname)
     exec(code, {}, loc)
@@ -127,11 +129,12 @@ try:
     import {0}
     try:
         import inspect
-        result = inspect.ismethod({1})
-    except:
-        try:
-            result = callable({2})
-        except: pass
+        inspect_result = inspect.ismethod({1})
+    except: pass
+    try:
+        callable_result = callable({2})
+    except: pass
+    result = inspect_result or callable_result
 except: pass
 """.format(module, fullname, fullname)
     exec(code, {}, loc)
@@ -228,7 +231,7 @@ class CTargetFinder:
     def add_class(self, filename, module, classname):
         self.log('found class: ' + classname)
         clazz = TargetClass(filename, module, classname)
-        self.classes.append(clazz)
+        self.targets.append(clazz)
         for item in browse_in_module(module, classname):
             if is_method(module, classname, item): self.add_method(module, clazz, item)
             else: self.warn('unknown item in class "{0:s}": {1:s}'.format(classname, item))
@@ -236,7 +239,7 @@ class CTargetFinder:
     def add_method(self, module, clazz, method_name):
         method = TargetMethod(method_name, module, clazz)
         self.try_to_set_parameter_types(module, method)
-        self.targets.append(method)
+        clazz.add_method(method)
         if method.has_unknown_parameters(): self.log('found a method with unknown parameters: ' + method.fullname())
         elif method.has_no_parameters():    self.log('found a method with no parameters: ' + method.fullname())
         else:                               self.log('found a method with {0:d} parameters: {1:s}'.format(method.number_of_parameters(), method.fullname()))
