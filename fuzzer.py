@@ -146,7 +146,9 @@ class CorrectParametersFuzzer(BaseFuzzer):
     def get_caller(self):   return self.caller
 
     def run(self):
-        if self.caller.target().number_of_parameters() <= 1: return
+        if self.caller.target().has_no_parameters():
+            self.found = True
+            return
         self.log('look for correct parameters for: ' + self.caller.target().name)
         self.search(self.caller, 1, self.caller.target().number_of_parameters())
 
