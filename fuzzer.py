@@ -15,6 +15,9 @@ from core import SubsequentMethodCaller
 from core import Stats
 from core import FunctionCallerFactory, MethodCallerFactory
 
+NO_EXCLUDES = []
+NO_COROUTINE_FUZZING = False
+
 # TODO: move it to BaseFuzzer
 fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', 'bytes()',
                   'bytearray()', '"ololo"', 'frozenset()', 'set()',
@@ -293,11 +296,12 @@ class SmartClassFuzzer(BaseFuzzer):
 
 class SmartMethodFuzzer(BaseFuzzer):
 
-    def __init__(self, method, constructor_caller, path = None, excludes = None):
+    def __init__(self, method, constructor_caller, path = None, excludes = None, fuzz_coroutine = True):
         super().__init__(path, excludes)
         self.method = method
         self.constructor_caller = constructor_caller
         self.path = path
+        self.fuzz_coroutine = fuzz_coroutine
 
     def run(self):
         if self.skip(self.method):
@@ -321,12 +325,14 @@ class SmartMethodFuzzer(BaseFuzzer):
             return
         self.log('run fuzzing for method {0:s} with {1:d} parameters'
                  .format(self.method.fullname(), self.method.number_of_parameters()))
+        if self.method.has_no_parameters() and self.fuzz_coroutine:
+            CoroutineFuzzer(successful_caller.clone(), self.path).run()
         for parameter_index in range(1, self.method.number_of_parameters()+1):
             caller = successful_caller.clone()
             for value in fuzzing_values:
                 caller.set_parameter_value(parameter_index, value)
                 self.run_and_dump_code(caller)
-                CoroutineFuzzer(caller, self.path).run()
+                if self.fuzz_coroutine: CoroutineFuzzer(caller, self.path).run()
 
     def log(self, message):
         core.print_with_prefix('SmartMethodFuzzer', message)
@@ -343,31 +349,53 @@ class CoroutineFuzzer(BaseFuzzer):
 
     def run(self):
         checker = CoroutineChecker(self.caller)
-        if checker.is_coroutine():
-            self.log('coroutine found')
-            close_caller = SubsequentMethodCaller(self.caller, 'close')
-            self.run_and_dump_code(close_caller)
-            fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
-            fuzzer.run()
-
-            # TODO: what does it expect in the third parameter? TracebackException?
-            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'throw',
-                                                          [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
-            fuzzer.run()
+        if not checker.is_coroutine():
+            self.log('it is not a coroutine')
+            return
+        self.log('coroutine found')
+        close_caller = SubsequentMethodCaller(self.caller, 'close')
+        self.run_and_dump_code(close_caller)
+        fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object],
+                                        NO_EXCLUDES, NO_COROUTINE_FUZZING)
+        fuzzer.run()
+        # TODO: what does it expect in the third parameter? TracebackException?
+        fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'throw',
+                                        [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object],
+                                        NO_EXCLUDES, NO_COROUTINE_FUZZING)
+        fuzzer.run()
 
     def log(self, message):
         core.print_with_prefix('CoroutineFuzzer', message)
 
 class SubsequentMethodFuzzer(SmartMethodFuzzer):
 
-    def __init__(self, base_caller, path, subsequent_method_name, parameter_types = []):
-        super().__init__(base_caller.method, base_caller.constructor_caller, False, path)
+    def __init__(self, base_caller, path, subsequent_method_name, parameter_types = [], excludes = [], fuzz_coroutine = True):
+        super().__init__(base_caller.method, base_caller.constructor_caller, path, excludes, fuzz_coroutine)
         self.base_caller = base_caller
         self.subsequent_method_name = subsequent_method_name
         self.parameter_types = parameter_types
 
-    def create_caller(self):
-        return SubsequentMethodCaller(self.base_caller, self.subsequent_method_name, self.parameter_types)
+    def run(self):
+        self.log('run fuzzing for method {0:s} with {1:d} parameters'
+                 .format(self.base_caller.target().fullname() + '.' + self.subsequent_method_name, self.get_number_of_parameters()))
+        caller = SubsequentMethodCaller(self.base_caller, self.subsequent_method_name, self.parameter_types)
+        if self.get_number_of_parameters() == 0:
+            self.log('method does not have parameters, just call it')
+            self.run_and_dump_code(caller)
+            if self.fuzz_coroutine: CoroutineFuzzer(caller, self.path).run()
+        else:
+            self.fuzz_hard(caller, 1)
+
+    def fuzz_hard(self, caller, current_arg_number):
+        if current_arg_number == self.get_number_of_parameters():
+            for value in fuzzing_values:
+                caller.set_parameter_value(current_arg_number, value)
+                self.run_and_dump_code(caller)
+                if self.fuzz_coroutine: CoroutineFuzzer(caller, self.path).run()
+        else:
+            for value in fuzzing_values:
+                caller.set_parameter_value(current_arg_number, value)
+                self.fuzz_hard(caller, current_arg_number + 1)
 
     def get_number_of_parameters(self): return len(self.parameter_types)
 
