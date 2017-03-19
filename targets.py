@@ -263,6 +263,9 @@ class TargetFinder:
             target_callable.no_unknown_parameters()
             for param in signature.parameters:
                 if param == 'self': continue
+                # TODO: how can we get info about args and kwargs?
+                if param == 'args': continue
+                if param == 'kwargs': continue
                 target_callable.add_parameter(ParameterType.any_object, signature.parameters[param].default)
         else: self.warn('could not get a signature: ' + target_callable.fullname())
 
