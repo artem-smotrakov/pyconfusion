@@ -260,6 +260,7 @@ class CTargetFinder:
         if signature:
             target_callable.no_unknown_parameters()
             for param in signature.parameters:
+                if param == 'self': continue
                 target_callable.add_parameter(ParameterType.any_object, signature.parameters[param].default)
         else: self.warn('could not get a signature: ' + target_callable.fullname())
 
