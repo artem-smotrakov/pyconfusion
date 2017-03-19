@@ -243,14 +243,16 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
             self.warn('skip function with unknown parameters: ' + self.function.name)
             return
         # first, try to find parameter values which lead to a successful invocation
-        finder = ParameterTypeFinder(self.function)
-        finder.run()
-        if not finder.success():
-            self.warn('could not find correct parameter values, skip')
-            return
+        if self.function.number_of_parameters() > 1:
+            finder = ParameterTypeFinder(self.function)
+            finder.run()
+            if not finder.success():
+                self.warn('could not find correct parameter values, skip')
+                return
+            successful_caller = finder.get_caller()
+        else: successful_caller = FunctionCaller(self.function)
         self.log('run fuzzing for function {0:s} with {1:d} parameters'
                  .format(self.function.name, self.function.number_of_parameters()))
-        successful_caller = finder.get_caller()
         for parameter_index in range(1, self.function.number_of_parameters()+1):
             caller = successful_caller.clone()
             for value in fuzzing_values:
