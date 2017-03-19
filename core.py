@@ -636,7 +636,7 @@ class TargetClass:
         return method
 
     def fullname(self):
-        return self.name
+        return self.module + '.' + self.name
 
     def get_constructor(self):
         for method_name in self.methods:
@@ -655,7 +655,7 @@ class TargetMethod(TargetCallable):
         self.clazz = clazz
 
     def fullname(self):
-        return self.clazz.name + '.' + self.name
+        return self.module + '.' + self.clazz.name + '.' + self.name
 
 class TestDump:
 
