@@ -3,10 +3,9 @@
 import argparse
 import core
 
-from fuzzer import LightFunctionFuzzer, HardFunctionFuzzer, SmartFunctionFuzzer, SmartClassFuzzer
-from fuzzer import ClassFuzzer
-from core import *
-from targets import *
+from fuzzer     import *
+from core       import *
+from targets    import *
 
 # contains fuzzer configuration
 # all parameters can be accessed as attributes
@@ -32,21 +31,15 @@ class Task:
 
     def run(self):
         if   self.no_src() == None: raise Exception('Sources not specified')
-        if   self.command() == 'clinic_targets':  self.search_clinic_targets()
-        elif self.command() == 'c_targets':     self.search_c_targets()
-        elif self.command() == 'clinic_fuzzer': self.fuzz_clinic()
-        elif self.command() == 'c_fuzzer':      self.fuzz_c()
+        if   self.command() == 'targets': self.search_targets()
+        elif self.command() == 'fuzzer':  self.fuzz()
         else: raise Exception('Unknown command: ' + self.command())
 
-    # DEPRECATED
-    def search_clinic_targets(self):
-        return ClinicTargetFinder(self.src()).run(self.finder_filter())
+    def search_targets(self):
+        return TargetFinder(self.src()).run(self.finder_filter())
 
-    def search_c_targets(self):
-        return CTargetFinder(self.src()).run(self.finder_filter())
-
-    def fuzz_c(self):
-        for target in self.search_c_targets():
+    def fuzz(self):
+        for target in self.search_targets():
             # check if the line matches specified filter
             if self.skip_fuzzing(target): continue
 
@@ -54,19 +47,6 @@ class Task:
                 SmartFunctionFuzzer(target, self.out()).run()
             if isinstance(target, TargetClass):
                 SmartClassFuzzer(target, self.out(), self.excludes).run()
-
-    # DEPRECATED
-    def fuzz_clinic(self):
-        for target in self.search_clinic_targets():
-            # check if the line matches specified filter
-            if self.skip_fuzzing(target): continue
-
-            if isinstance(target, TargetFunction):
-                if self.is_light(): LightFunctionFuzzer(target, self.out()).run()
-                if self.is_hard():  HardFunctionFuzzer(target, self.out()).run()
-
-            if isinstance(target, TargetClass):
-                ClassFuzzer(target, self.out(), self.excludes).run(self.mode())
 
     def skip_fuzzing(self, target):
         # check if filter was specified
@@ -85,10 +65,7 @@ class Task:
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',            help='path to sources', default='./')
 parser.add_argument('--command',        help='what do you want to do?',
-                    choices=['clinic_targets', 'clinic_fuzzer', 'c_targets', 'c_fuzzer'],
-                    default='c_targets')
-parser.add_argument('--mode',           help='how do you want to do?',
-                    choices=['light', 'hard'], default='light')
+                    choices=['targets', 'fuzzer'], default='targets')
 parser.add_argument('--fuzzer_filter',  help='target filter for fuzzer', default='')
 parser.add_argument('--finder_filter',  help='file filter for finder', default='')
 parser.add_argument('--out',            help='path to directory for generated tests')
