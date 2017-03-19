@@ -45,12 +45,22 @@ def extract_func_name(line):
         return None
     return extract(tmp[0], '"', '"')
 
-def browse(module, name):
+def browse_module(module):
     loc = {}
     code = """
 import {0:s}
 result = dir({1:s})
-""".format(module, name)
+""".format(module, module)
+    exec(code, {}, loc)
+    return loc['result']
+
+def browse_in_module(module, name):
+    loc = {}
+    fullname = module + '.' + name
+    code = """
+import {0:s}
+result = dir({1:s})
+""".format(module, fullname)
     exec(code, {}, loc)
     return loc['result']
 
@@ -127,9 +137,8 @@ except: pass
     exec(code, {}, loc)
     return loc['result']
 
-def get_signature(module, name):
+def get_signature(module, fullname):
     loc = {}
-    fullname = module + '.' + name
     code = """
 signature = None
 try:
@@ -206,35 +215,50 @@ class CTargetFinder:
         except ModuleNotFoundError as err:
             self.warn('{0}'.format(err))
             return
-        for item in browse(module, module):
+        for item in browse_module(module):
             if is_module(module, item):         self.add_module(filename, module, item)
             elif is_class(module, item):        self.add_class(filename, module, item)
             elif is_function(module, item):     self.add_function(filename, module, item)
-            else: self.warn('unknown item: ' + item)
+            else: self.warn('unknown item in module "{0:s}": {1:s}'.format(module, item))
 
     def add_module(self, filename, parent_module, module):
+        # TODO: explore nested modules
         self.log('found module: ' + module)
 
     def add_class(self, filename, module, classname):
         self.log('found class: ' + classname)
         clazz = TargetClass(filename, module, classname)
         self.classes.append(clazz)
+        for item in browse_in_module(module, classname):
+            if is_method(module, classname, item): self.add_method(module, clazz, item)
+            else: self.warn('unknown item in class "{0:s}": {1:s}'.format(classname, item))
+
+    def add_method(self, module, clazz, method_name):
+        method = TargetMethod(method_name, module, clazz)
+        self.try_to_set_parameter_types(module, method)
+        self.targets.append(method)
+        if method.has_unknown_parameters(): self.log('found a method with unknown parameters: ' + method.fullname())
+        elif method.has_no_parameters():    self.log('found a method with no parameters: ' + method.fullname())
+        else:                               self.log('found a method with {0:d} parameters: {1:s}'.format(method.number_of_parameters(), method.fullname()))
 
     def add_function(self, filename, module, func_name):
         func = TargetFunction(filename, module, func_name)
         # TODO: can we figure out parameter types here?
         # TODO: deprecate ParameterType
-        # TODO: try to use __text_signature__ attribute if get_signature() fails
-        signature = get_signature(module, func_name)
-        if signature:
-            func.no_unknown_parameters()
-            for param in signature.parameters:
-                func.add_parameter(ParameterType.any_object, signature.parameters[param].default)
-        else: self.warn('could not get a signature of function: ' + func_name)
+        self.try_to_set_parameter_types(module, func)
         self.targets.append(func)
-        if func.has_unknown_parameters():   self.log('found function with unknown parameters: ' + func_name)
-        elif func.has_no_parameters():      self.log('found function with no parameters: ' + func_name)
-        else:                               self.log('found function with {0:d} parameters: {1:s}'.format(func.number_of_parameters(), func_name))
+        if func.has_unknown_parameters():   self.log('found a function with unknown parameters: ' + func_name)
+        elif func.has_no_parameters():      self.log('found a function with no parameters: ' + func_name)
+        else:                               self.log('found a function with {0:d} parameters: {1:s}'.format(func.number_of_parameters(), func_name))
+
+    def try_to_set_parameter_types(self, module, target_callable):
+        # TODO: try to use __text_signature__ attribute if get_signature() fails
+        signature = get_signature(module, target_callable.fullname())
+        if signature:
+            target_callable.no_unknown_parameters()
+            for param in signature.parameters:
+                target_callable.add_parameter(ParameterType.any_object, signature.parameters[param].default)
+        else: self.warn('could not get a signature: ' + target_callable.fullname())
 
     # DEPRECATED
     def look_for_module_functions(self, filename, pointer, module):
