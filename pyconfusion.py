@@ -24,9 +24,6 @@ class Task:
     def command(self):  return self.args['command']
     def src(self):      return self.args['src']
     def no_src(self):   return self.src() == None
-    def mode(self):     return self.args['mode']
-    def is_light(self): return self.mode() == 'light'
-    def is_hard(self):  return self.mode() == 'hard'
     def out(self):      return self.args['out']
     def finder_filter(self): return self.args['finder_filter']
     def fuzzer_filter(self): return self.args['fuzzer_filter']
