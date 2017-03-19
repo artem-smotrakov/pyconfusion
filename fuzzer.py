@@ -265,6 +265,37 @@ class CorrectParametersFuzzer(BaseFuzzer):
     def warn(self, message):
         self.log('warning: {0:s}'.format(message))
 
+class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
+
+    def __init__(self, target, path = None, max_params = 3):
+        super().__init__(path)
+        self.target = target
+        self.max_params = max_params
+        self.found = False
+
+    def success(self):      return self.found
+    def get_caller(self):   return self.caller
+
+    def run(self):
+        self.log('look for correct parameters for: ' + self.target.name)
+        for n in range(1, self.max_params+1):
+            self.log('parameter number guess: {0:d}'.format(n))
+            self.set_parameters(n)
+            self.caller = FunctionCaller(self.target)
+            fuzzer = CorrectParametersFuzzer(self.caller, self.path)
+            fuzzer.run()
+            if fuzzer.success():
+                self.found = True
+                return
+
+    def set_parameters(self, n):
+        self.target.reset_parameter_types();
+        for i in range(0, n): self.target.add_parameter(ParameterType.any_object)
+        self.target.no_unknown_parameters()
+
+    def log(self, message):
+        core.print_with_prefix('HardCorrectParametersFuzzer', message)
+
 # TODO: support different bindings of parameters
 #       https://docs.python.org/3/library/inspect.html#inspect.Parameter.kind
 # TODO: fuzz different number of parameters - range(self.function.number_of_required_parameters(), self.number_of_parameters())
@@ -274,18 +305,22 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
         super().__init__(function, path)
 
     def fuzz(self):
-        if self.function.has_unknown_parameters():
-            self.warn('skip function with unknown parameters: ' + self.function.name)
-            return
         # first, try to find parameter values which lead to a successful invocation
-        if self.function.number_of_parameters() > 1:
-            finder = CorrectParametersFuzzer(FunctionCaller(self.function), self.path)
-            finder.run()
-            if not finder.success():
-                self.warn('could not find correct parameter values, skip: ' + self.function.fullname())
-                return
-            successful_caller = finder.get_caller()
-        else: successful_caller = FunctionCaller(self.function)
+        successful_caller = None
+        if self.function.has_unknown_parameters():
+            self.warn('function with unknown parameters: ' + self.function.name)
+            fuzzer = HardCorrectParametersFuzzer(self.function, self.path)
+            fuzzer.run()
+            if fuzzer.success(): successful_caller = fuzzer.get_caller()
+        elif self.function.number_of_parameters() == 1:
+            successful_caller = FunctionCaller(self.function)
+        else:
+            fuzzer = CorrectParametersFuzzer(FunctionCaller(self.function), self.path)
+            fuzzer.run()
+            if fuzzer.success(): successful_caller = fuzzer.get_caller()
+        if successful_caller == None:
+            self.warn('could not find correct parameter values, skip: ' + self.function.fullname())
+            return
         self.log('run fuzzing for function {0:s} with {1:d} parameters'
                  .format(self.function.name, self.function.number_of_parameters()))
         for parameter_index in range(1, self.function.number_of_parameters()+1):
