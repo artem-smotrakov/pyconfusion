@@ -52,17 +52,14 @@ def is_module(parent_module, module):
 result = False
 try:
     import {0}
-    inspect_result = False
-    isinstance_result = False
     try:
         import inspect
-        inspect_result = inspect.ismodule({1})
-    except: pass
-    try:
-        from types import ModuleType
-        isinstance_result = isinstance({2}, ModuleType)
-    except: pass
-    result = inspect_result or isinstance_result
+        result = inspect.ismodule({1})
+    except:
+        try:
+            from types import ModuleType
+            result = isinstance({2}, ModuleType)
+        except: pass
 except: pass
 """.format(parent_module, fullname, fullname)
     exec(code, {}, loc)
@@ -75,16 +72,13 @@ def is_class(module, name):
 result = False
 try:
     import {0}
-    inspect_result = False
-    isinstance_result = False
     try:
         import inspect
-        inspect_result = inspect.isclass({1})
-    except: pass
-    try:
-        isinstance_result = isinstance({2}, type)
-    except: pass
-    result = inspect_result or isinstance_result
+        result = inspect.isclass({1})
+    except:
+        try:
+            result = isinstance({2}, type)
+        except: pass
 except: pass
 """.format(module, fullname, fullname)
     exec(code, {}, loc)
@@ -94,8 +88,13 @@ def is_function(module, name):
     loc = {}
     fullname = fullname = module + '.' + name
     code = """
-import {0}
-result = callable({1})
+result = False
+try:
+    import {0}
+    try:
+        result = callable({1})
+    except: pass
+except: pass
 """.format(module, fullname)
     exec(code, {}, loc)
     return loc['result']
@@ -122,13 +121,14 @@ class CTargetFinder:
     def run(self, filter):
         # TODO: look for classes and methods
         self.warn('CTargetFinder looks only for functions in native modules')
-        targets = []
         self.contents = {}
 
         for filename in look_for_c_files(self.path):
             self.contents[filename] = read_file(filename)
 
+        self.classes = []
         self.targets = []
+        self.native_modules = []
         for filename in self.contents:
             if not filter in filename:
                 self.log('skip ' + filename)
@@ -143,7 +143,6 @@ class CTargetFinder:
 
     def look_for_native_modules(self, filename):
         content = self.contents[filename]
-        self.native_modules = []
         for line in content:
             if 'PyModule_Create' in line:
                 # extract variable name
@@ -191,8 +190,10 @@ class CTargetFinder:
     def add_module(self, filename, parent_module, module):
         self.log('found module: ' + module)
 
-    def add_class(self, filename, module, class_name):
-        self.log('found class: ' + class_name)
+    def add_class(self, filename, module, classname):
+        self.log('found class: ' + classname)
+        clazz = TargetClass(filename, module, classname)
+        self.classes.append(clazz)
 
     def add_function(self, filename, module, func_name):
         func = TargetFunction(filename, module, func_name)
@@ -254,6 +255,7 @@ class CTargetFinder:
             if 'PyMethodDef' in line and methods_pointer in line:
                 found_structure = True
 
+    # DEPRECATED
     def look_for_define(self, string):
         for filename in self.contents:
             content = self.contents[filename]
@@ -280,6 +282,7 @@ class CTargetFinder:
     def warn(self, message):
         self.log('warning: {0:s}'.format(message))
 
+# DEPRECATED
 class ClinicParserState(Enum):
     expect_clinic_input = 1
     inside_clinic_input = 2
