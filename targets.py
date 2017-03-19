@@ -45,6 +45,15 @@ def extract_func_name(line):
         return None
     return extract(tmp[0], '"', '"')
 
+def browse(module, name):
+    loc = {}
+    code = """
+import {0:s}
+result = dir({1:s})
+""".format(module, name)
+    exec(code, {}, loc)
+    return loc['result']
+
 def is_module(parent_module, module):
     loc = {}
     fullname = parent_module + '.' + module
@@ -99,7 +108,26 @@ except: pass
     exec(code, {}, loc)
     return loc['result']
 
-def get_function_signature(module, name):
+def is_method(module, classname, name):
+    loc = {}
+    fullname = fullname = module + '.' + classname + '.' + name
+    code = """
+result = False
+try:
+    import {0}
+    try:
+        import inspect
+        result = inspect.ismethod({1})
+    except:
+        try:
+            result = callable({2})
+        except: pass
+except: pass
+""".format(module, fullname, fullname)
+    exec(code, {}, loc)
+    return loc['result']
+
+def get_signature(module, name):
     loc = {}
     fullname = module + '.' + name
     code = """
@@ -178,10 +206,7 @@ class CTargetFinder:
         except ModuleNotFoundError as err:
             self.warn('{0}'.format(err))
             return
-        loc = {}
-        code = 'import {0:s}\nr = dir({1:s})'.format(module, module)
-        exec(code, {}, loc)
-        for item in loc['r']:
+        for item in browse(module, module):
             if is_module(module, item):         self.add_module(filename, module, item)
             elif is_class(module, item):        self.add_class(filename, module, item)
             elif is_function(module, item):     self.add_function(filename, module, item)
@@ -199,8 +224,8 @@ class CTargetFinder:
         func = TargetFunction(filename, module, func_name)
         # TODO: can we figure out parameter types here?
         # TODO: deprecate ParameterType
-        # TODO: try to use __text_signature__ attribute if get_function_signature() fails
-        signature = get_function_signature(module, func_name)
+        # TODO: try to use __text_signature__ attribute if get_signature() fails
+        signature = get_signature(module, func_name)
         if signature:
             func.no_unknown_parameters()
             for param in signature.parameters:
