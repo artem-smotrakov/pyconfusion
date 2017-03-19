@@ -47,25 +47,6 @@ class BaseFuzzer:
         Stats.get().increment_tests()
         return result
 
-    # returns a subsequent method caller
-    # this method should be implemented in a child class which uses try_coroutine_fuzzing()
-    def create_subsequent_method_fuzzer(self, caller, path, method_name, parameter_types):
-        raise Exception('should not be called')
-
-    def try_coroutine_fuzzing(self):
-        checker = CoroutineChecker(self.caller)
-        if checker.is_coroutine():
-            self.log('coroutine found')
-            close_caller = SubsequentMethodCaller(self.caller, 'close')
-            self.run_and_dump_code(close_caller)
-            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
-            fuzzer.run()
-
-            # TODO: what does it expect in the third parameter? TracebackException?
-            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'throw',
-                                                          [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
-            fuzzer.run()
-
     def skip(self, target):
         if self.excludes:
             if isinstance(self.excludes, list):
@@ -343,12 +324,53 @@ class SmartMethodFuzzer(BaseFuzzer):
             for value in fuzzing_values:
                 caller.set_parameter_value(parameter_index, value)
                 self.run_and_dump_code(caller)
+                CoroutineFuzzer(caller, self.path).run()
 
     def log(self, message):
         core.print_with_prefix('SmartMethodFuzzer', message)
 
     def warn(self, message):
         self.log('warning: {0:s}'.format(message))
+
+class CoroutineFuzzer(BaseFuzzer):
+
+    def __init__(self, caller, path = None):
+        super().__init__(path)
+        self.caller = caller
+        self.path = path
+
+    def run(self):
+        checker = CoroutineChecker(self.caller)
+        if checker.is_coroutine():
+            self.log('coroutine found')
+            close_caller = SubsequentMethodCaller(self.caller, 'close')
+            self.run_and_dump_code(close_caller)
+            fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
+            fuzzer.run()
+
+            # TODO: what does it expect in the third parameter? TracebackException?
+            fuzzer = self.create_subsequent_method_fuzzer(self.caller, self.path, 'throw',
+                                                          [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
+            fuzzer.run()
+
+    def log(self, message):
+        core.print_with_prefix('CoroutineFuzzer', message)
+
+class SubsequentMethodFuzzer(SmartMethodFuzzer):
+
+    def __init__(self, base_caller, path, subsequent_method_name, parameter_types = []):
+        super().__init__(base_caller.method, base_caller.constructor_caller, False, path)
+        self.base_caller = base_caller
+        self.subsequent_method_name = subsequent_method_name
+        self.parameter_types = parameter_types
+
+    def create_caller(self):
+        return SubsequentMethodCaller(self.base_caller, self.subsequent_method_name, self.parameter_types)
+
+    def get_number_of_parameters(self): return len(self.parameter_types)
+
+    def log(self, message):
+        core.print_with_prefix('SubsequentMethodFuzzer', message)
 
 # TODO: the code below is not used anymore, but coroutine fuzzing should be implemented
 
