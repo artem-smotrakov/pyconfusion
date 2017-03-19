@@ -31,8 +31,9 @@ general_parameter_values = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}',
 # base class for fuzzers, contains common methods
 class BaseFuzzer:
 
-    def __init__(self, path = None):
+    def __init__(self, path = None, excludes = []):
         self.dump = TestDump(path)
+        self.excludes = excludes
 
     def run_and_dump_code(self, caller):
         result = False
@@ -65,20 +66,30 @@ class BaseFuzzer:
                                                           [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
             fuzzer.run()
 
+    def skip(self, target):
+        if self.excludes:
+            if isinstance(self.excludes, list):
+                for exclude in self.excludes:
+                    if exclude in target.fullname(): return True
+            else:
+                if self.excludes in target.fullname(): return True
+
+        return False
+
 class BaseFunctionFuzzer(BaseFuzzer):
 
-    def __init__(self, function, path = None):
-        super().__init__(path)
+    def __init__(self, function, path = None, excludes = []):
+        super().__init__(path, excludes)
         self.function = function
         self.path = path
 
     def skip(self):
+        if super().skip(self.function): return True
+
         if self.function.has_no_parameters():
             self.log('function doesn\'t have parameters, skip')
             return True
 
-        # TODO: add a command line option to specify excluded targets
-        #       (os, and signal.pthread_kill should be excluded by default)
         # TODO: those ifs are ugly
         #       need to define a class wich check if we should skip module/function/method/etc,
         #       and check instances of this class in a loop
@@ -141,77 +152,6 @@ class BaseFunctionFuzzer(BaseFuzzer):
 
         # run actual fuzzing
         self.fuzz()
-
-class LightFunctionFuzzer(BaseFunctionFuzzer):
-
-    def __init__(self, function, path = None):
-        super().__init__(function, path)
-
-    def fuzz(self):
-        # first, we try to call a target function with parameters of expected types
-        # if this call succeeds, we can start fuzzing
-        # while fuzzing, we fuzz each particular parameter,
-        # but pass values of expected types to other parameters
-        # this approach may help us to pass type checks of some parameters,
-        # and reach more code in the target function
-        if not self.check_correct_parameter_type():
-            self.log('warning: skip, could not find correct parameter types for function: ' + self.function.name)
-            return
-
-        self.log('run light fuzzing for function: ' + self.function.name)
-        arg_number = 1
-        while arg_number <= self.function.number_of_parameters():
-            for value in fuzzing_values:
-                caller = FunctionCaller(self.function)
-                caller.set_parameter_value(arg_number, value)
-                self.dump.store(caller)
-                try:
-                    caller.call()
-                    self.log('wow, it succeded')
-                except Exception as err:
-                    self.log('exception {0}: {1}'.format(type(err), err))
-            arg_number = arg_number + 1
-
-    def log(self, message):
-        core.print_with_prefix('LightFunctionFuzzer', message)
-
-class HardFunctionFuzzer(BaseFunctionFuzzer):
-
-    def __init__(self, function, path = None):
-        super().__init__(function, path)
-
-    def fuzz(self):
-        # first, we try to call a target function with parameters of expected types
-        # if this call succeeds, we can start fuzzing
-        # while fuzzing, we fuzz each particular parameter,
-        # but pass values of expected types to other parameters
-        # this approach may help us to pass type checks of some parameters,
-        # and reach more code in the target function
-        if not self.check_correct_parameter_type():
-            self.log('warning: skip, could not find correct parameter types for function: ' + self.function.name)
-            return
-
-        self.log('run hard fuzzing for function: ' + self.function.name)
-        caller = FunctionCaller(self.function)
-        self.fuzz_hard(caller, 1, caller.function.number_of_parameters())
-
-    def fuzz_hard(self, caller, current_arg_number, number_of_parameters):
-        if current_arg_number == number_of_parameters:
-            for value in fuzzing_values:
-                caller.set_parameter_value(current_arg_number, value)
-                self.dump.store(caller)
-                try:
-                    caller.call()
-                    self.log('wow, it succeded')
-                except Exception as err:
-                    self.log('exception {0}: {1}'.format(type(err), err))
-        else:
-            for value in fuzzing_values:
-                caller.set_parameter_value(current_arg_number, value)
-                self.fuzz_hard(caller, current_arg_number + 1, number_of_parameters)
-
-    def log(self, message):
-        core.print_with_prefix('HardFunctionFuzzer', message)
 
 # stops fuzzing when it finds a set of parameters which results to successful call
 class CorrectParametersFuzzer(BaseFuzzer):
@@ -303,8 +243,8 @@ class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
 # TODO: fuzz different number of parameters - range(self.function.number_of_required_parameters(), self.number_of_parameters())
 class SmartFunctionFuzzer(BaseFunctionFuzzer):
 
-    def __init__(self, function, path = None):
-        super().__init__(function, path)
+    def __init__(self, function, path = None, excludes = []):
+        super().__init__(function, path, excludes)
 
     def fuzz(self):
         # first, try to find parameter values which lead to a successful invocation
@@ -340,10 +280,9 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
 class SmartClassFuzzer(BaseFuzzer):
 
     def __init__(self, clazz, path = None, excludes = None):
-        super().__init__(path)
+        super().__init__(path, excludes)
         self.clazz = clazz
         self.path = path
-        self.excludes = excludes
 
     def run(self):
         self.log('try to fuzz class: ' + self.clazz.name)
@@ -372,14 +311,15 @@ class SmartClassFuzzer(BaseFuzzer):
 class SmartMethodFuzzer(BaseFuzzer):
 
     def __init__(self, method, constructor_caller, path = None, excludes = None):
-        super().__init__(path)
+        super().__init__(path, excludes)
         self.method = method
         self.constructor_caller = constructor_caller
         self.path = path
-        self.excludes = excludes
 
     def run(self):
-        if self.skip(self.method): self.log('skip fuzzing of ' + self.method.fullname())
+        if self.skip(self.method):
+            self.log('skip fuzzing of ' + self.method.fullname())
+            return
         # first, try to find parameter values which lead to a successful invocation
         successful_caller = None
         if self.method.has_unknown_parameters():
@@ -404,19 +344,6 @@ class SmartMethodFuzzer(BaseFuzzer):
                 caller.set_parameter_value(parameter_index, value)
                 self.run_and_dump_code(caller)
 
-    # TODO: move it to BaseFuzzer
-    def skip(self, target):
-        if self.excludes:
-            if isinstance(self.excludes, list):
-                for exclude in self.excludes:
-                    if exclude in target.fullname():
-                        return True
-            else:
-                if self.excludes in target.fullname():
-                    return True
-
-        return False
-
     def log(self, message):
         core.print_with_prefix('SmartMethodFuzzer', message)
 
@@ -424,6 +351,77 @@ class SmartMethodFuzzer(BaseFuzzer):
         self.log('warning: {0:s}'.format(message))
 
 # TODO: the code below is not used anymore, but coroutine fuzzing should be implemented
+
+class LightFunctionFuzzer(BaseFunctionFuzzer):
+
+    def __init__(self, function, path = None):
+        super().__init__(function, path)
+
+    def fuzz(self):
+        # first, we try to call a target function with parameters of expected types
+        # if this call succeeds, we can start fuzzing
+        # while fuzzing, we fuzz each particular parameter,
+        # but pass values of expected types to other parameters
+        # this approach may help us to pass type checks of some parameters,
+        # and reach more code in the target function
+        if not self.check_correct_parameter_type():
+            self.log('warning: skip, could not find correct parameter types for function: ' + self.function.name)
+            return
+
+        self.log('run light fuzzing for function: ' + self.function.name)
+        arg_number = 1
+        while arg_number <= self.function.number_of_parameters():
+            for value in fuzzing_values:
+                caller = FunctionCaller(self.function)
+                caller.set_parameter_value(arg_number, value)
+                self.dump.store(caller)
+                try:
+                    caller.call()
+                    self.log('wow, it succeded')
+                except Exception as err:
+                    self.log('exception {0}: {1}'.format(type(err), err))
+            arg_number = arg_number + 1
+
+    def log(self, message):
+        core.print_with_prefix('LightFunctionFuzzer', message)
+
+class HardFunctionFuzzer(BaseFunctionFuzzer):
+
+    def __init__(self, function, path = None):
+        super().__init__(function, path)
+
+    def fuzz(self):
+        # first, we try to call a target function with parameters of expected types
+        # if this call succeeds, we can start fuzzing
+        # while fuzzing, we fuzz each particular parameter,
+        # but pass values of expected types to other parameters
+        # this approach may help us to pass type checks of some parameters,
+        # and reach more code in the target function
+        if not self.check_correct_parameter_type():
+            self.log('warning: skip, could not find correct parameter types for function: ' + self.function.name)
+            return
+
+        self.log('run hard fuzzing for function: ' + self.function.name)
+        caller = FunctionCaller(self.function)
+        self.fuzz_hard(caller, 1, caller.function.number_of_parameters())
+
+    def fuzz_hard(self, caller, current_arg_number, number_of_parameters):
+        if current_arg_number == number_of_parameters:
+            for value in fuzzing_values:
+                caller.set_parameter_value(current_arg_number, value)
+                self.dump.store(caller)
+                try:
+                    caller.call()
+                    self.log('wow, it succeded')
+                except Exception as err:
+                    self.log('exception {0}: {1}'.format(type(err), err))
+        else:
+            for value in fuzzing_values:
+                caller.set_parameter_value(current_arg_number, value)
+                self.fuzz_hard(caller, current_arg_number + 1, number_of_parameters)
+
+    def log(self, message):
+        core.print_with_prefix('HardFunctionFuzzer', message)
 
 class LightMethodFuzzer(BaseFuzzer):
 
