@@ -13,6 +13,7 @@ from core import TestDump
 from core import CoroutineChecker
 from core import SubsequentMethodCaller
 from core import Stats
+from core import FunctionCallerFactory, MethodCallerFactory
 
 # TODO: move it to BaseFuzzer
 fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', 'bytes()',
@@ -224,6 +225,7 @@ class CorrectParametersFuzzer(BaseFuzzer):
     def get_caller(self):   return self.caller
 
     def run(self):
+        if self.caller.target().number_of_parameters() <= 1: return
         self.log('look for correct parameters for: ' + self.caller.target().name)
         self.search(self.caller, 1, self.caller.target().number_of_parameters())
 
@@ -267,9 +269,9 @@ class CorrectParametersFuzzer(BaseFuzzer):
 
 class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
 
-    def __init__(self, target, path = None, max_params = 3):
+    def __init__(self, caller_factory, path = None, max_params = 3):
         super().__init__(path)
-        self.target = target
+        self.caller_factory = caller_factory
         self.max_params = max_params
         self.found = False
 
@@ -277,11 +279,11 @@ class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
     def get_caller(self):   return self.caller
 
     def run(self):
-        self.log('look for correct parameters for: ' + self.target.name)
+        self.log('look for correct parameters for: ' + self.caller_factory.target().name)
         for n in range(1, self.max_params+1):
             self.log('parameter number guess: {0:d}'.format(n))
             self.set_parameters(n)
-            self.caller = FunctionCaller(self.target)
+            self.caller = self.caller_factory.create()
             fuzzer = CorrectParametersFuzzer(self.caller, self.path)
             fuzzer.run()
             if fuzzer.success():
@@ -289,9 +291,9 @@ class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
                 return
 
     def set_parameters(self, n):
-        self.target.reset_parameter_types();
-        for i in range(0, n): self.target.add_parameter(ParameterType.any_object)
-        self.target.no_unknown_parameters()
+        self.caller_factory.target().reset_parameter_types();
+        for i in range(0, n): self.caller_factory.target().add_parameter(ParameterType.any_object)
+        self.caller_factory.target().no_unknown_parameters()
 
     def log(self, message):
         core.print_with_prefix('HardCorrectParametersFuzzer', message)
@@ -309,7 +311,7 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
         successful_caller = None
         if self.function.has_unknown_parameters():
             self.warn('function with unknown parameters: ' + self.function.name)
-            fuzzer = HardCorrectParametersFuzzer(self.function, self.path)
+            fuzzer = HardCorrectParametersFuzzer(FunctionCallerFactory(self.function), self.path)
             fuzzer.run()
             if fuzzer.success(): successful_caller = fuzzer.get_caller()
         elif self.function.number_of_parameters() == 1:
@@ -378,19 +380,22 @@ class SmartMethodFuzzer(BaseFuzzer):
 
     def run(self):
         if self.skip(self.method): self.log('skip fuzzing of ' + self.method.fullname())
-        if self.method.has_unknown_parameters():
-            self.warn('skip function with unknown parameters: ' + self.method.fullname())
-            return
-        self.log('try to fuzz method: ' + self.method.fullname())
         # first, try to find parameter values which lead to a successful invocation
-        if self.method.number_of_parameters() > 1:
-            finder = CorrectParametersFuzzer(MethodCaller(self.method, self.constructor_caller), self.path)
-            finder.run()
-            if not finder.success():
-                self.warn('could not find correct parameter values, skip: ' + self.method.fullname())
-                return
-            successful_caller = finder.get_caller()
-        else: successful_caller = MethodCaller(self.method, self.constructor_caller)
+        successful_caller = None
+        if self.method.has_unknown_parameters():
+            self.warn('method with unknown parameters: ' + self.method.fullname())
+            fuzzer = HardCorrectParametersFuzzer(MethodCallerFactory(self.method, self.constructor_caller), self.path)
+            fuzzer.run()
+            if fuzzer.success(): successful_caller = fuzzer.get_caller()
+        elif self.method.number_of_parameters() == 1:
+            successful_caller = MethodCaller(self.method, self.constructor_caller)
+        else:
+            fuzzer = CorrectParametersFuzzer(MethodCaller(self.method, self.constructor_caller), self.path)
+            fuzzer.run()
+            if fuzzer.success(): successful_caller = fuzzer.get_caller()
+        if successful_caller == None:
+            self.warn('could not find correct parameter values, skip: ' + self.method.fullname())
+            return
         self.log('run fuzzing for method {0:s} with {1:d} parameters'
                  .format(self.method.fullname(), self.method.number_of_parameters()))
         for parameter_index in range(1, self.method.number_of_parameters()+1):
