@@ -60,230 +60,30 @@ class ParameterType(Enum):
     unknown = 'unknown'
     byte_like_object = 'byte-like object'
     integer = 'integer'
-    long = 'long'
-    unsigned_long = 'unsigned long'
     any_object = 'object'
-    ssize_t = 'ssize_t'
     double = 'double'
     boolean = 'boolean'
     string = 'string'
-    ascii_buffer = 'ascii buffer'
-    unicode_buffer = 'unicode buffer'
-    unsigned_int = 'unsigned integer'
-    complex_number = 'complex number'
-    lzma_filter = 'lzma_filter'
-    lzma_vli = 'lzma_vli'
-    path_t = 'path-like object'
-    dir_fd = 'dir_fd'
-    file_descriptor = 'file descriptor'
-    uid_t = 'uid'
-    gid_t = 'gid'
-    FSConverter = 'FSConverter'
-    pid_t = 'process id'
-    sched_param = 'sched_param'
-    idtype_t = 'idtype_t'
-    intptr_t = 'intptr_t'
-    off_t = 'offset'
-    dev_t = 'device'
-    path_confname = 'path_confname'
-    confstr_confname = 'confstr_confname'
-    sysconf_confname = 'sysconf_confname'
-    io_ssize_t = 'io_ssize_t'
     exception = 'exception'
     exception_type = 'exception type'
 
     def __str__(self):
         return self.value
 
-    # TODO: get rid of these terrible ifs (and also see below)
-    def extract_parameter_type(pstr, default_value):
-        if pstr == 'Py_buffer' or 'Py_buffer(accept' in pstr:
-            return ParameterType.byte_like_object
-        if pstr == 'long':
-            return ParameterType.long
-        if pstr.startswith('unsigned_long(bitwise'):
-            return ParameterType.unsigned_long
-        if pstr == 'double':
-            return ParameterType.double
-        if pstr == 'Py_complex_protected' or pstr == 'Py_complex':
-            return ParameterType.complex_number
-        if ParameterType.is_any_object(pstr):
-            return ParameterType.any_object
-        if ParameterType.is_ssize_t(pstr):
-            return ParameterType.ssize_t
-        if pstr == 'bool':
-            return ParameterType.boolean
-        if ParameterType.is_boolean(pstr, default_value):
-            return ParameterType.boolean
-        if ParameterType.is_int(pstr):
-            return ParameterType.integer
-        if ParameterType.is_string(pstr):
-            return ParameterType.string
-        if pstr == 'ascii_buffer':
-            return ParameterType.ascii_buffer
-        if ParameterType.is_unicode(pstr):
-            return ParameterType.unicode_buffer
-        if 'unsigned_int' in pstr:
-            return ParameterType.unsigned_int
-        if 'lzma_filter' in pstr:
-            return ParameterType.lzma_filter
-        if 'lzma_vli' in pstr:
-            return ParameterType.lzma_vli
-        if ParameterType.is_path_t(pstr):
-            return ParameterType.path_t
-        if ParameterType.is_dir_fd(pstr):
-            return ParameterType.dir_fd
-        if pstr == 'fildes':
-            return ParameterType.file_descriptor
-        if pstr == 'uid_t':
-            return ParameterType.uid_t
-        if pstr == 'gid_t':
-            return ParameterType.gid_t
-        if pstr == 'FSConverter':
-            return ParameterType.FSConverter
-        if pstr == 'pid_t' or pstr == 'id_t':
-            return ParameterType.pid_t
-        if pstr == 'sched_param':
-            return ParameterType.sched_param
-        if pstr == 'idtype_t':
-            return ParameterType.idtype_t
-        if pstr == 'intptr_t':
-            return ParameterType.intptr_t
-        if pstr == 'Py_off_t':
-            return ParameterType.off_t
-        if pstr == 'dev_t':
-            return ParameterType.dev_t
-        if pstr == 'path_confname':
-            return ParameterType.path_confname
-        if pstr == 'confstr_confname':
-            return ParameterType.confstr_confname
-        if pstr == 'sysconf_confname':
-            return ParameterType.sysconf_confname
-        if pstr == 'io_ssize_t':
-            return ParameterType.io_ssize_t
-        # we don't have ParameterType.exception here (should we?)
-
-        return ParameterType.unknown
-
-    def is_unicode(pstr):
-        return (pstr == 'unicode'
-                or pstr == 'Py_UNICODE'
-                or pstr.startswith('Py_UNICODE(zeroes'))
-
-    def is_dir_fd(pstr):
-        return (pstr == 'dir_fd' or pstr.startswith('dir_fd('))
-
-    def is_path_t(pstr):
-        return (pstr == 'path_t'
-                or pstr.startswith('path_t(allow_fd')
-                or pstr.startswith('path_t(nullable'))
-
-    def is_string(pstr):
-        return (pstr == 'str'
-                or pstr.startswith('str(accept')
-                or pstr.startswith('str(c_default'))
-
-    def is_int(pstr):
-        return (pstr == 'int'
-                or pstr.startswith('int(c_default')
-                or pstr.startswith('int(accept')
-                or pstr.startswith('int(py_default')
-                or pstr.startswith('int(type'))
-
-    def is_boolean(pstr, default_value):
-        return ((pstr == 'int(c_default="0")' or pstr == 'int(c_default="1")')
-                and (default_value == 'True' or default_value == 'False'))
-
-    def is_ssize_t(pstr):
-        return (pstr == 'Py_ssize_t'
-                or pstr == 'ssize_t'
-                or pstr.startswith('ssize_t(c_default')
-                or pstr.startswith('Py_ssize_t(c_default'))
-
-    def is_any_object(pstr):
-        return (pstr == 'object'
-                or pstr.startswith('object(c_default')
-                or pstr.startswith('object(converter')
-                or pstr.startswith('object(subclass_of')
-                or pstr.startswith('object(type')
-                or pstr == '\'O\'')
-
     def default_value(ptype):
         if ptype == ParameterType.byte_like_object:
             return 'bytes()'
         if ptype == ParameterType.integer:
             return '1'
-        if ptype == ParameterType.unsigned_int:
-            return '1'
-        if ptype == ParameterType.long:
-            return '1'
-        if ptype == ParameterType.unsigned_long:
-            return '1'
-        if ptype == ParameterType.complex_number:
-            return 'complex(1.0, -1.0)'
         if ptype == ParameterType.any_object:
             # TODO: anything better?
             return '()'
-        if ptype == ParameterType.ssize_t:
-            return '1'
         if ptype == ParameterType.double:
             return '4.2'
         if ptype == ParameterType.boolean:
             return 'True'
         if ptype == ParameterType.string:
             return '\'string\''
-        if ptype == ParameterType.ascii_buffer:
-            return '\'ascii\''
-        if ptype == ParameterType.unicode_buffer:
-            return '\'unicode\''
-        if ptype == ParameterType.lzma_filter:
-            # TODO: anything better?
-            return '()'
-        if ptype == ParameterType.lzma_vli:
-            # TODO: anything better?
-            return '()'
-        if ptype == ParameterType.path_t:
-            # TODO: should it create a temp file instead of using /tmp here?
-            return '/tmp'
-        if ptype == ParameterType.dir_fd:
-            # TODO: anything better?
-            return 'rootfd'
-        if ptype == ParameterType.file_descriptor:
-            # TODO: anything better?
-            return 'None'
-        if ptype == ParameterType.uid_t:
-            return '1001'
-        if ptype == ParameterType.gid_t:
-            return '1002'
-        if ptype == ParameterType.FSConverter:
-            # TODO: anything better?
-            return '\'ls\''
-        if ptype == ParameterType.pid_t:
-            return '1234'
-        if ptype == ParameterType.sched_param:
-            # TODO: return os.sched_param instance
-            return 'None'
-        if ptype == ParameterType.idtype_t:
-            return 'P_ALL'
-        if ptype == ParameterType.intptr_t:
-            return '2345'
-        if ptype == ParameterType.off_t:
-            return '42'
-        if ptype == ParameterType.dev_t:
-            # TODO: use os.makedev
-            return 'None'
-        if ptype == ParameterType.path_confname:
-            # TODO: anything better?
-            return 'test'
-        if ptype == ParameterType.confstr_confname:
-            # TODO: anyting better?
-            return 'test'
-        if ptype == ParameterType.sysconf_confname:
-            # TODO: anything better?
-            return 'test'
-        if ptype == ParameterType.io_ssize_t:
-            # TODO: anyting better?
-            return '-1'
         if ptype == ParameterType.exception:
             return 'Exception()'
         if ptype == ParameterType.exception_type:
