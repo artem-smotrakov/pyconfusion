@@ -25,7 +25,7 @@ fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', '
                   '[(0), (0)]', '([0], [0])',
                   ParameterValue('A()', 'class A: pass'))
 
-general_parameter_values = ('42', '42.3', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '"test"')
+general_parameter_values = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '42.3')
 
 class BaseFunctionFuzzer:
 
