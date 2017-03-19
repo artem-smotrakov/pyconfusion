@@ -720,3 +720,18 @@ class TestDump:
 
     def log(self, message):
         print_with_prefix('TestDump', message)
+
+class FunctionCallerFactory:
+
+    def __init__(self, function):   self.function = function
+    def create(self):               return FunctionCaller(self.function)
+    def target(self):               return self.function
+
+class MethodCallerFactory:
+
+    def __init__(self, method, constructor_caller):
+        self.method = method
+        self.constructor_caller = constructor_caller
+
+    def create(self):   return MethodCaller(self.method, self.constructor_caller)
+    def target(self):   return self.method
