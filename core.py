@@ -188,12 +188,7 @@ object = $class_name($constructor_arguments)
 
     def __init__(self, clazz):
         self.clazz = clazz
-
         self.constructor = clazz.get_constructor()
-        if self.constructor == None:
-            self.log('debug: methods = {0}'.format(self.clazz.methods))
-            raise Exception('could not find a constructor of class ' + clazz.name)
-
         self.caller = FunctionCaller(self.constructor)
         self.prepare()
 
@@ -201,6 +196,10 @@ object = $class_name($constructor_arguments)
         return self.constructor
 
     def prepare(self):
+        if self.constructor == None:
+            self.warn('could not find a constructor of class: {0}'.format(clazz.name))
+            return
+
         self.caller.prepare()
 
         self.imports = self.caller.imports
@@ -228,12 +227,18 @@ object = $class_name($constructor_arguments)
         return self.caller.get_parameter_values()
 
     def call(self):
+        if self.constructor == None:
+            self.warn('could not find a constructor of class: {0}'.format(clazz.name))
+            return
         self.prepare()
         self.log('run the following code:\n' + self.code)
         exec(self.code)
 
     def log(self, message):
         print_with_prefix('ConstructorCaller', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
 
     def classname(self):
         return self.clazz.name
