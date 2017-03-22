@@ -239,6 +239,9 @@ class SmartClassFuzzer(BaseFuzzer):
         # make sure that we can call a constructor,
         # and get an instance of the class
         # if we can't, we can't continue fuzzing
+        if not self.clazz.has_constructor():
+            self.warn('could not find a constructor of class: {0}'.format(self.clazz.name))
+            return
         finder = CorrectParametersFuzzer(ConstructorCaller(self.clazz))
         finder.run()
         if not finder.success():
