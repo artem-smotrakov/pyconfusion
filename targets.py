@@ -218,8 +218,8 @@ class TargetFinder:
     def look_for_targets(self, filename, module):
         try:
             __import__(module)
-        except ModuleNotFoundError as err:
-            self.warn('could not import module: {0}'.format(err))
+        except:
+            self.warn('could not import module: {0}'.format(module))
             return
         for item in browse_module(module):
             if is_module(module, item):         self.add_module(filename, module, item)
