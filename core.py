@@ -227,6 +227,9 @@ object = $class_name($constructor_arguments)
                                         class_name = self.clazz.name,
                                         constructor_arguments = ', '.join(self.caller.function_arguments))
 
+    def set_parameters(self, n):
+        self.caller.set_parameters(n)
+
     def set_parameter_value(self, arg_number, value):
         self.caller.set_parameter_value(arg_number, value)
 
@@ -305,6 +308,9 @@ r = object.$method_name($method_arguments)
                                         method_name = self.method.name,
                                         method_parameter_definitions = '\n'.join(self.method_parameter_definitions),
                                         method_arguments = ', '.join(self.method_arguments))
+
+    def set_parameters(self, n):
+        self.caller.set_parameters(n)
 
     def set_parameter_value(self, arg_number, value):
         self.caller.set_parameter_value(arg_number, value)
