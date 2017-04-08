@@ -46,6 +46,7 @@ class BaseFuzzer:
             self.log('wow, it succeded')
             result = True
         except Exception as err:
+            self.exception = err
             self.log('exception {0}: {1}'.format(type(err), err))
         Stats.get().increment_tests()
         return result
@@ -59,6 +60,8 @@ class BaseFuzzer:
                 if self.excludes in target.fullname(): return True
 
         return False
+
+    def get_exception(self): return self.exception
 
 class BaseFunctionFuzzer(BaseFuzzer):
 
@@ -106,6 +109,7 @@ class CorrectParametersFuzzer(BaseFuzzer):
         super().__init__(path)
         self.caller = caller
         self.found = False
+        self.changed_parameters_number = False
 
     def success(self):      return self.found
     def get_caller(self):   return self.caller
@@ -115,7 +119,13 @@ class CorrectParametersFuzzer(BaseFuzzer):
             self.found = True
             return
         self.log('look for correct parameters for: ' + self.caller.target().name)
-        self.search(self.caller, 1, self.caller.target().number_of_parameters())
+        while True:
+            self.search(self.caller, 1, self.caller.target().number_of_parameters())
+            if self.changed_parameters_number:
+                self.changed_parameters_number = False
+                self.found = False
+                continue
+            break
 
     def search(self, caller, current_arg_number, number_of_parameters):
         if self.found: return
@@ -147,7 +157,25 @@ class CorrectParametersFuzzer(BaseFuzzer):
         if self.found:
             self.log('found correct parameter values: {0}'.format(caller.get_parameter_values()))
             return True
-        else: return False
+        if self.get_exception() != None:
+            msg = str(self.get_exception())
+            n = None
+            if 'takes exactly one argument' in msg:
+                n = 1
+            elif 'takes exactly ' in msg:
+                start = msg.index('takes exactly ') + len('takes exactly ')
+                end = msg.index(' ', start)
+                string = msg[start:end].strip()
+                try:
+                    n = int(string)
+                except: pass
+            if n != None:
+                caller.set_parameters(n)
+                self.changed_parameters_number = True
+                self.found = True
+                return True
+        return False
+
 
     def log(self, message):
         core.print_with_prefix('CorrectParametersFuzzer', message)

@@ -110,9 +110,7 @@ $module_name.$function_name($function_arguments)
 
     def __init__(self, function):
         self.function = function
-        self.parameter_values = []
-        for parameter_type in function.parameter_types:
-            self.parameter_values.append(ParameterType.default_value(parameter_type))
+        self.update_parameter_values()
         self.prepare()
 
     def target(self):
@@ -160,6 +158,15 @@ $module_name.$function_name($function_arguments)
                                         module_name = self.function.module,
                                         function_name = self.function.name,
                                         function_arguments = ', '.join(self.function_arguments))
+
+    def set_parameters(self, n):
+        self.function.set_parameters(n)
+        self.update_parameter_values()
+
+    def update_parameter_values(self):
+        self.parameter_values = []
+        for parameter_type in self.function.parameter_types:
+            self.parameter_values.append(ParameterType.default_value(parameter_type))
 
     def set_parameter_value(self, arg_number, value):
         self.parameter_values[arg_number - 1] = value
@@ -419,6 +426,11 @@ class TargetCallable:
     def reset_parameter_types(self):
         self.parameter_types = []
         self.default_values = []
+
+    def set_parameters(self, n):
+        self.reset_parameter_types()
+        for i in range(0, n): self.add_parameter(ParameterType.any_object)
+        self.no_unknown_parameters()
 
     def number_of_parameters(self):
         return len(self.parameter_types)
