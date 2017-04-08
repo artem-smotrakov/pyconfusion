@@ -427,8 +427,12 @@ class TargetCallable:
     def has_no_parameters(self): return not self.unknown_parameters and len(self.parameter_types) == 0
     def has_unknown_parameters(self): return self.unknown_parameters
     def no_unknown_parameters(self): self.unknown_parameters = False
-    def has_default_value(self, index): return self.default_values[index-1] != None
-    def get_default_value(self, index): return self.default_values[index-1]
+    def has_default_value(self, index): return not self.has_no_parameters() and self.default_values[index-1] != None
+
+    def get_default_value(self, index):
+        if self.has_no_parameters(): return None
+        else: return self.default_values[index-1]
+
     def reset_parameter_types(self):
         self.parameter_types = []
         self.default_values = []
