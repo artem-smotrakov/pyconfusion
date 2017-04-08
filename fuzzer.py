@@ -102,7 +102,8 @@ class BaseFunctionFuzzer(BaseFuzzer):
         # run actual fuzzing
         self.fuzz()
 
-# stops fuzzing when it finds a set of parameters which results to successful call
+# looks for a set of parameters which results to successful call
+# it just exits if a callable has 0 or 1 parameter
 class CorrectParametersFuzzer(BaseFuzzer):
 
     def __init__(self, caller, path = None):
@@ -115,18 +116,23 @@ class CorrectParametersFuzzer(BaseFuzzer):
     def get_caller(self):   return self.caller
 
     def run(self):
-        if self.caller.target().has_no_parameters():
-            self.found = True
-            return
-        self.log('look for correct parameters for: ' + self.caller.target().name)
         while True:
+            if self.caller.target().number_of_parameters() <= 1:
+                self.log('skip, number of parameters is less than two')
+                self.found = True
+                break
+            self.log('look for correct parameters for {0:s} with {1:d} parameters'
+                     .format(self.caller.target().name, self.caller.target().number_of_parameters()))
             self.search(self.caller, 1, self.caller.target().number_of_parameters())
             if self.changed_parameters_number:
+                self.log('changed parameter number to {0:d}'
+                         .format(self.caller.target().number_of_parameters()))
                 self.changed_parameters_number = False
                 self.found = False
                 continue
             break
 
+    # recursive search
     def search(self, caller, current_arg_number, number_of_parameters):
         if self.found: return
         if current_arg_number == number_of_parameters:
@@ -145,6 +151,8 @@ class CorrectParametersFuzzer(BaseFuzzer):
                     self.search(caller, current_arg_number + 1, number_of_parameters)
                     if self.found: return
 
+    # if a parameter has a default value, it's set to a caller, and true is returned
+    # false otherwise
     def could_set_default_value(self, caller, current_arg_number):
         if self.caller.target().has_default_value(current_arg_number):
             value = self.caller.target().get_default_value(current_arg_number)
@@ -152,6 +160,9 @@ class CorrectParametersFuzzer(BaseFuzzer):
             return True
         else: return False
 
+    # run a caller, and checks if the call was successful (no exception thrown)
+    # if an exception was thrown, it tries to analyze it to figure out
+    # if the callable has wrong parameters number
     def could_make_successful_call(self, caller):
         self.found = self.run_and_dump_code(caller)
         if self.found:
@@ -175,7 +186,6 @@ class CorrectParametersFuzzer(BaseFuzzer):
                 self.found = True
                 return True
         return False
-
 
     def log(self, message):
         core.print_with_prefix('CorrectParametersFuzzer', message)
