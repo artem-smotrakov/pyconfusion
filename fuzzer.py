@@ -117,8 +117,8 @@ class CorrectParametersFuzzer(BaseFuzzer):
 
     def run(self):
         while True:
-            if self.caller.target().number_of_parameters() <= 1:
-                self.log('skip, number of parameters is less than two')
+            if self.caller.target().has_no_parameters():
+                self.log('skip, no parameters')
                 self.found = True
                 break
             self.log('look for correct parameters for {0:s} with {1:d} parameters'
@@ -171,7 +171,9 @@ class CorrectParametersFuzzer(BaseFuzzer):
         if self.get_exception() != None:
             msg = str(self.get_exception())
             n = None
-            if 'takes exactly one argument' in msg:
+            if 'takes no arguments' in msg:
+                n = 0
+            elif 'takes exactly one argument' in msg:
                 n = 1
             elif 'takes exactly ' in msg:
                 start = msg.index('takes exactly ') + len('takes exactly ')
