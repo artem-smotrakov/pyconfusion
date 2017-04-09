@@ -94,10 +94,44 @@ class ParameterType(Enum):
 
 class ParameterValue:
 
-    def __init__(self, value, extra = '', imports = ''):
+    def __init__(self, value, extra = '', import_statement = ''):
         self.value = value
         self.extra = extra
-        self.imports = imports
+        self.imports = Imports()
+        self.imports.add(import_statement)
+
+# contains import statements for caller classes
+class Imports:
+
+    def __init__(self):
+        self.froms = set()
+        self.imports = set()
+
+    # adds a single import statement
+    def add(self, string):
+        if not string: return
+        if string.startswith('from '): self.froms.add(string)
+        elif string.startswith('import '): self.imports.add(string)
+        else: self.warn('unexpected import: {0}'.format(string))
+
+    # adds all imports startements from specified Imports instance
+    def merge(self, imports):
+        if not isinstance(imports, Imports):
+            self.warn('not Imports passed')
+            return
+        for string in imports.froms:   self.froms.add(string)
+        for string in imports.imports: self.imports.add(string)
+
+    # generate Python code with imports
+    # 'import ...' startements go first, then 'from ...' startements go
+    def code(self):
+        return '{0:s}\n{1:s}'.format('\n'.join(self.imports), '\n'.join(self.froms))
+
+    def log(self, message):
+        print_with_prefix('Imports', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
 
 class FunctionCaller:
 
@@ -128,7 +162,7 @@ $module_name.$function_name($function_arguments)
         if self.function.number_of_parameters() != len(self.parameter_values):
             raise Exception('number of parameters is not equal to number of values')
 
-        self.imports = set()
+        self.imports = Imports()
         self.extra = set()
         self.parameter_definitions = list()
         self.function_arguments = list()
@@ -141,7 +175,7 @@ $module_name.$function_name($function_arguments)
             name = 'p' + str(arg_number)
 
             if type(value) is ParameterValue:
-                self.imports.add(value.imports)
+                self.imports.merge(value.imports)
                 self.extra.add(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
@@ -152,7 +186,7 @@ $module_name.$function_name($function_arguments)
             arg_number = arg_number + 1
 
         template = Template(FunctionCaller.basic_template)
-        self.code = template.substitute(imports = '\n'.join(self.imports),
+        self.code = template.substitute(imports = self.imports.code(),
                                         extra = '\n'.join(self.extra),
                                         parameter_definitions = '\n'.join(self.parameter_definitions),
                                         module_name = self.function.module,
@@ -221,7 +255,7 @@ object = $class_name($constructor_arguments)
         self.imports.add('from {0:s} import {1:s}'.format(self.clazz.module, self.clazz.name))
 
         template = Template(ConstructorCaller.basic_template)
-        self.code = template.substitute(imports = '\n'.join(self.imports),
+        self.code = template.substitute(imports = self.imports.code(),
                                         extra = '\n'.join(self.extra),
                                         parameter_definitions = '\n'.join(self.caller.parameter_definitions),
                                         class_name = self.clazz.name,
@@ -281,13 +315,13 @@ r = object.$method_name($method_arguments)
     def target(self):
         return self.method
 
-    def prepare(self, imports = set(), extra = set()):
+    def prepare(self, imports = Imports(), extra = set()):
         self.constructor_caller.prepare()
         self.caller.prepare()
 
         self.imports = imports
-        self.imports = self.imports.union(self.constructor_caller.imports)
-        self.imports = self.imports.union(self.caller.imports)
+        self.imports.merge(self.constructor_caller.imports)
+        self.imports.merge(self.caller.imports)
 
         self.extra = extra
         self.extra = self.extra.union(self.constructor_caller.extra)
@@ -300,7 +334,7 @@ r = object.$method_name($method_arguments)
         self.method_arguments = self.caller.function_arguments
 
         template = Template(MethodCaller.basic_template)
-        self.code = template.substitute(imports = '\n'.join(self.imports),
+        self.code = template.substitute(imports = self.imports.code(),
                                         extra = '\n'.join(self.extra),
                                         class_name = self.constructor_caller.classname(),
                                         constructor_parameter_definitions = '\n'.join(self.constructor_parameter_definitions),
@@ -372,7 +406,7 @@ r.$method_name($method_arguments)
         self.prepare()
 
     def prepare(self):
-        self.imports = set()
+        self.imports = Imports()
         self.extra = set()
         self.parameter_definitions = list()
         self.method_arguments = list()
@@ -383,7 +417,7 @@ r.$method_name($method_arguments)
             name = 'p' + str(arg_number)
 
             if type(value) is ParameterValue:
-                self.imports.add(value.imports)
+                self.imports.megre(value.imports)
                 self.extra.add(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
