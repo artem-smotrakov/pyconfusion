@@ -417,7 +417,7 @@ r.$method_name($method_arguments)
             name = 'p' + str(arg_number)
 
             if type(value) is ParameterValue:
-                self.imports.megre(value.imports)
+                self.imports.merge(value.imports)
                 self.extra.add(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
