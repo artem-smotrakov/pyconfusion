@@ -4,6 +4,7 @@ import os
 import core
 from core import *
 from enum import Enum
+from inspect import Parameter
 
 def look_for_c_files(path):
     result = []
@@ -266,7 +267,9 @@ class TargetFinder:
                 # TODO: how can we get info about args and kwargs?
                 if param == 'args': continue
                 if param == 'kwargs': continue
-                target_callable.add_parameter(ParameterType.any_object, signature.parameters[param].default)
+                if signature.parameters[param].default == Parameter.empty: default_value = None
+                else: default_value = signature.parameters[param].default
+                target_callable.add_parameter(ParameterType.any_object, default_value)
         else: self.warn('could not get a signature: ' + target_callable.fullname())
 
     def log(self, message):
