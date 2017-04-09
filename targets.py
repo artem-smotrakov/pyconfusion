@@ -238,7 +238,8 @@ class TargetFinder:
             if self.skip(item):
                 self.log('skip ' + item)
                 return
-            if is_module(module, item):         self.add_module(filename, module, item)
+            if item == 'True' or item == 'False': return
+            elif is_module(module, item):       self.add_module(filename, module, item)
             elif is_class(module, item):        self.add_class(filename, module, item)
             elif is_function(module, item):     self.add_function(filename, module, item)
             else: self.warn('unknown item in module "{0:s}": {1:s}'.format(module, item))
