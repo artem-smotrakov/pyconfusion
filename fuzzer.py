@@ -22,7 +22,7 @@ NO_COROUTINE_FUZZING = False
 fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', 'bytes()',
                   'bytearray()', '"ololo"', 'frozenset()', 'set()',
                   'Exception', 'Exception()',
-                  ParameterValue('sys.maxsize', 'import sys'), ParameterValue('-sys.maxsize-1', 'import sys'),
+                  ParameterValue('sys.maxsize', '', 'import sys'), ParameterValue('-sys.maxsize-1', '', 'import sys'),
                   'float("inf")', 'float("-inf")',
                   '"x" * 2 ** 20', 'range(0, 2**20)',
                   '("ololo",) * 2 ** 20', '(42,) * 2 ** 20', 'bytes("x" * 2**20)', 'bytearray("x" * 2**20)',
