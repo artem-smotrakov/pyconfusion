@@ -145,7 +145,6 @@ $module_name.$function_name($function_arguments)
                 self.extra.add(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
-                print('debug: {0}'.format(value))
                 pstr = '{0:s} = {1}\n'.format(name, value)
 
             self.parameter_definitions.append(pstr)
