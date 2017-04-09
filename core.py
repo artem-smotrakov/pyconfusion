@@ -145,7 +145,8 @@ $module_name.$function_name($function_arguments)
                 self.extra.add(value.extra)
                 pstr = '{0:s} = {1:s}\n'.format(name, value.value)
             else:
-                pstr = '{0:s} = {1:s}\n'.format(name, value)
+                print('debug: {0}'.format(value))
+                pstr = '{0:s} = {1}\n'.format(name, value)
 
             self.parameter_definitions.append(pstr)
             self.function_arguments.append(name)
@@ -424,10 +425,12 @@ class TargetCallable:
         self.parameter_types = []
         self.default_values = []
 
-    def has_no_parameters(self): return not self.unknown_parameters and len(self.parameter_types) == 0
+    def has_no_parameters(self): return len(self.parameter_types) == 0
     def has_unknown_parameters(self): return self.unknown_parameters
     def no_unknown_parameters(self): self.unknown_parameters = False
-    def has_default_value(self, index): return not self.has_no_parameters() and self.default_values[index-1] != None
+    def has_default_value(self, index):
+        if self.has_no_parameters(): return False
+        else: return self.default_values[index-1] != None
 
     def get_default_value(self, index):
         if self.has_no_parameters(): return None
@@ -453,7 +456,7 @@ class TargetCallable:
 
     def add_parameter(self, parameter_type, default_value = None):
         self.parameter_types.append(parameter_type)
-        self.default_values.append(None)
+        self.default_values.append(default_value)
 
 class TargetFunction(TargetCallable):
 
