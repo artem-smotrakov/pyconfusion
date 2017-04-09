@@ -42,7 +42,7 @@ class Task:
         else: raise Exception('Unknown command: ' + self.command())
 
     def search_targets(self):
-        return TargetFinder(self.src(), self.modules()).run(self.finder_filter())
+        return TargetFinder(self.src(), self.modules(), self.excludes()).run(self.finder_filter())
 
     def fuzz(self):
         for target in self.search_targets():

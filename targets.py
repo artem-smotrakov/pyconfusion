@@ -157,9 +157,10 @@ class TargetFinder:
 
     NO_SRC = 'no sources'
 
-    def __init__(self, path, modules):
+    def __init__(self, path, modules, excludes = []):
         self.path = path
         self.modules = modules
+        self.excludes = excludes
 
     def run(self, filter):
         self.contents = {}
@@ -180,6 +181,16 @@ class TargetFinder:
             for module in self.modules: self.look_for_targets(TargetFinder.NO_SRC, module)
 
         return self.targets
+
+    def skip(self, target):
+        if self.excludes:
+            if isinstance(self.excludes, list):
+                for exclude in self.excludes:
+                    if exclude in target: return True
+            else:
+                if self.excludes in target: return True
+
+        return False
 
     def parse_c_file(self, filename):
         self.log('parse file: ' + filename)
@@ -223,6 +234,10 @@ class TargetFinder:
             self.warn('could not import module: {0}'.format(module))
             return
         for item in browse_module(module):
+            print('debug: ' + item)
+            if self.skip(item):
+                self.log('skip ' + item)
+                return
             if is_module(module, item):         self.add_module(filename, module, item)
             elif is_class(module, item):        self.add_class(filename, module, item)
             elif is_function(module, item):     self.add_function(filename, module, item)
