@@ -118,17 +118,20 @@ class CorrectParametersFuzzer(BaseFuzzer):
     def run(self):
         while True:
             if self.caller.target().has_no_parameters():
-                self.log('skip, no parameters')
-                self.found = True
-                break
+                self.log('no parameters, try to call it')
+                if self.could_make_successful_call(self.caller):
+                    self.found = True
+                    break
+                if not self.changed_parameters_number:
+                    self.warn('no parameters, no successful call')
+                    break
             self.log('look for correct parameters for {0:s} with {1:d} parameters'
                      .format(self.caller.target().name, self.caller.target().number_of_parameters()))
+            self.changed_parameters_number = False
+            self.found = False
             self.search(self.caller, 1, self.caller.target().number_of_parameters())
             if self.changed_parameters_number:
-                self.log('changed parameter number to {0:d}'
-                         .format(self.caller.target().number_of_parameters()))
                 self.changed_parameters_number = False
-                self.found = False
                 continue
             break
 
@@ -138,10 +141,12 @@ class CorrectParametersFuzzer(BaseFuzzer):
         if current_arg_number == number_of_parameters:
             if self.could_set_default_value(caller, current_arg_number):
                 if self.could_make_successful_call(caller): return
+                if self.changed_parameters_number: return
             else:
                 for value in general_parameter_values:
                     caller.set_parameter_value(current_arg_number, value)
                     if self.could_make_successful_call(caller): return
+                    if self.changed_parameters_number: return
         else:
             if self.could_set_default_value(caller, current_arg_number):
                 self.search(caller, current_arg_number + 1, number_of_parameters)
@@ -186,7 +191,9 @@ class CorrectParametersFuzzer(BaseFuzzer):
                 caller.set_parameters(n)
                 self.changed_parameters_number = True
                 self.found = True
-                return True
+                self.log('changed parameter number to {0:d}'
+                         .format(self.caller.target().number_of_parameters()))
+                return False
         return False
 
     def log(self, message):
