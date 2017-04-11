@@ -185,12 +185,9 @@ class CorrectParametersFuzzer(BaseFuzzer):
             elif 'takes exactly one argument' in msg:
                 n = 1
             elif 'takes exactly ' in msg:
-                start = msg.index('takes exactly ') + len('takes exactly ')
-                end = msg.index(' ', start)
-                string = msg[start:end].strip()
-                try:
-                    n = int(string)
-                except: pass
+                n = self.get_n_from_message(msg, 'takes exactly ')
+            elif 'takes at most ' in msg:
+                n = self.get_n_from_message(msg, 'takes at most ')
             if n != None:
                 caller.set_parameters(n)
                 self.changed_parameters_number = True
@@ -199,6 +196,14 @@ class CorrectParametersFuzzer(BaseFuzzer):
                          .format(self.caller.target().number_of_parameters()))
                 return False
         return False
+
+    def get_n_from_message(self, msg, string):
+        start = msg.index(string) + len(string)
+        end = msg.index(' ', start)
+        string = msg[start:end].strip()
+        try:
+            return int(string)
+        except: return None
 
     def log(self, message):
         core.print_with_prefix('CorrectParametersFuzzer', message)
