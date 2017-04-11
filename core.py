@@ -177,7 +177,7 @@ $module_name.$function_name($function_arguments)
             if type(value) is ParameterValue:
                 self.imports.merge(value.imports)
                 self.extra.add(value.extra)
-                pstr = '{0:s} = {1:s}\n'.format(name, value.value)
+                pstr = '{0:s} = {1}\n'.format(name, value.value)
             else:
                 pstr = '{0:s} = {1}\n'.format(name, value)
 
@@ -419,9 +419,9 @@ r.$method_name($method_arguments)
             if type(value) is ParameterValue:
                 self.imports.merge(value.imports)
                 self.extra.add(value.extra)
-                pstr = '{0:s} = {1:s}\n'.format(name, value.value)
+                pstr = '{0:s} = {1}\n'.format(name, value.value)
             else:
-                pstr = '{0:s} = {1:s}\n'.format(name, value)
+                pstr = '{0:s} = {1}\n'.format(name, value)
 
             self.parameter_definitions.append(pstr)
             self.method_arguments.append(name)
