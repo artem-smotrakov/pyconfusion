@@ -285,7 +285,8 @@ class TargetFinder:
                 if param == 'kwargs': continue
                 if signature.parameters[param].default == Parameter.empty: default_value = None
                 else: default_value = signature.parameters[param].default
-                target_callable.add_parameter(ParameterType.any_object, default_value)
+                # TODO: pass default_value here, but make sure that it works correctly
+                target_callable.add_parameter(ParameterType.any_object, None)
         else: self.warn('could not get a signature: ' + target_callable.fullname())
 
     def log(self, message):
