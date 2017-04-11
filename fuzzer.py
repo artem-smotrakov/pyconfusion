@@ -19,17 +19,21 @@ NO_EXCLUDES = []
 NO_COROUTINE_FUZZING = False
 
 # TODO: move it to BaseFuzzer
-fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', 'bytes()',
+fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', 'bytes()', 'None',
                   'bytearray()', '"ololo"', 'frozenset()', 'set()',
                   'Exception', 'Exception()',
-                  ParameterValue('sys.maxsize', '', 'import sys'), ParameterValue('-sys.maxsize-1', '', 'import sys'),
                   'float("inf")', 'float("-inf")',
                   '"x" * 2 ** 20', 'range(0, 2**20)',
                   '("ololo",) * 2 ** 20', '(42,) * 2 ** 20', 'bytes("x" * 2**20)', 'bytearray("x" * 2**20)',
                   '[(0), (0)]', '([0], [0])',
-                  ParameterValue('A()', 'class A: pass'))
+                  ParameterValue('A()', 'class A: pass'),
+                  ParameterValue('sys.exc_info()[2]', '', 'import sys'))
 
-general_parameter_values = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '42.3')
+# the following value often cause "hangs"
+# ParameterValue('sys.maxsize', '', 'import sys'), ParameterValue('-sys.maxsize-1', '', 'import sys'),
+
+general_parameter_values = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '42.3', 'None',
+                            ParameterValue('sys.exc_info()[2]', '', 'import sys'))
 
 # base class for fuzzers, contains common methods
 class BaseFuzzer:
