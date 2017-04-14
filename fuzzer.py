@@ -180,7 +180,7 @@ class CorrectParametersFuzzer(BaseFuzzer):
         if self.get_exception() != None:
             msg = str(self.get_exception())
             n = None
-            if 'takes no arguments' in msg:
+            if 'takes no arguments' in msg or 'takes no parameters' in msg:
                 n = 0
             elif 'takes exactly one argument' in msg:
                 n = 1
