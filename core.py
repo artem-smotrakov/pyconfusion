@@ -205,13 +205,11 @@ $module_name.$function_name($function_arguments)
     def set_parameter_value(self, arg_number, value):
         self.parameter_values[arg_number - 1] = value
 
-        # TODO: can it be called in call()
-        self.prepare()
-
     def get_parameter_values(self):
         return self.parameter_values
 
     def call(self):
+        self.prepare()
         self.log('run the following code:\n\n' + self.code)
         exec(self.code)
 

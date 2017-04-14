@@ -77,8 +77,8 @@ class BaseFunctionFuzzer(BaseFuzzer):
     def skip(self):
         if super().skip(self.function): return True
 
-        if self.function.has_no_parameters():
-            self.log('function doesn\'t have parameters, skip')
+        if not self.function.has_unknown_parameters() and self.function.has_no_parameters():
+            self.log('function "{0:s}" doesn\'t have parameters, skip'.format(self.function.fullname()))
             return True
 
         # TODO: those ifs are ugly
