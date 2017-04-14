@@ -234,7 +234,6 @@ class TargetFinder:
             self.warn('could not import module: {0}'.format(module))
             return
         for item in browse_module(module):
-            print('debug: ' + item)
             if self.skip(item):
                 self.log('skip ' + item)
                 return
