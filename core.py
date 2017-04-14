@@ -243,7 +243,8 @@ object = $class_name($constructor_arguments)
 
         self.caller.prepare()
 
-        self.imports = self.caller.imports
+        self.imports = Imports()
+        self.imports.merge(self.caller.imports)
         self.extra = self.caller.extra
 
         self.parameter_definitions = list()
@@ -319,7 +320,8 @@ r = object.$method_name($method_arguments)
         self.constructor_caller.prepare()
         self.caller.prepare()
 
-        self.imports = imports
+        self.imports = Imports()
+        self.imports.merge(imports)
         self.imports.merge(self.constructor_caller.imports)
         self.imports.merge(self.caller.imports)
 
