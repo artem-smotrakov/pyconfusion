@@ -194,6 +194,8 @@ class CorrectParametersFuzzer(BaseFuzzer):
                 n = self.get_n_from_message(msg, 'takes exactly ')
             elif 'takes at most ' in msg:
                 n = self.get_n_from_message(msg, 'takes at most ')
+            elif 'expected at most ' in msg:
+                n = self.get_n_from_message(msg, 'expected at most ')
             if n != None:
                 caller.set_parameters(n)
                 self.changed_parameters_number = True
