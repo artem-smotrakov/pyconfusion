@@ -25,7 +25,7 @@ except: tb = sys.exc_info()[2]
 """
 
 # TODO: move it to BaseFuzzer
-fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', 'bytes()', 'None',
+fuzzing_values = ('42', '42.3', '2 ** 16', '-1 * 2 ** 16', 'True', 'False', '()', '[]', '{}', '{"a":10}', 'bytes()', 'None',
                   'bytearray()', '"ololo"', 'frozenset()', 'set()',
                   'Exception', 'Exception()',
                   'float("inf")', 'float("-inf")',
@@ -39,7 +39,8 @@ fuzzing_values = ('42', '42.3', 'True', 'False', '()', '[]', '{}', '{"a":10}', '
 # ParameterValue('sys.maxsize', '', 'import sys'), ParameterValue('-sys.maxsize-1', '', 'import sys'),
 
 general_parameter_values = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '42.3', 'None',
-                            ParameterValue('sys.exc_info()[2]', '', 'import sys'))
+                            ParameterValue('sys.exc_info()[2]', '', 'import sys'),
+                            ParameterValue('tb', get_traceback_code, 'import sys'))
 
 # base class for fuzzers, contains common methods
 class BaseFuzzer:
