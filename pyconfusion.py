@@ -50,10 +50,16 @@ class Task:
             if self.skip_fuzzing(target): continue
 
             if isinstance(target, TargetFunction):
-                SmartFunctionFuzzer(target, self.out()).run()
-            if isinstance(target, TargetClass):
-                SmartClassFuzzer(target, self.out(), self.excludes()).run()
+                fuzzer = SmartFunctionFuzzer(target)
+            elif isinstance(target, TargetClass):
+                fuzzer = SmartClassFuzzer(target)
+            else: raise Exception('Unknown target: {0}'.format(target))
 
+            fuzzer.set_output_path(self.out())
+            fuzzer.set_excludes(self.excludes())
+            fuzzer.run()
+
+    # returns true if fuzzing of specified target should be skipped
     def skip_fuzzing(self, target):
         # check if filter was specified
         if self.fuzzer_filter() and not self.fuzzer_filter() in target.fullname():
