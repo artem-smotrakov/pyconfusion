@@ -94,11 +94,16 @@ class ParameterType(Enum):
 
 class ParameterValue:
 
-    def __init__(self, value, extra = '', import_statement = ''):
+    def __init__(self, value, extra = '', import_statement = None):
         self.value = value
         self.extra = extra
         self.imports = Imports()
-        self.imports.add(import_statement)
+        if import_statement:
+            if isinstance(import_statement, Imports):
+                self.imports.merge(import_statement)
+            elif isinstance(import_statement, str):
+                self.imports.add(import_statement)
+            else: raise Exception('unexpected import statement: {0}'.format(import_statement))
 
 # contains import statements for caller classes
 class Imports:
@@ -268,6 +273,13 @@ object = $class_name($constructor_arguments)
 
     def get_parameter_values(self):
         return self.caller.get_parameter_values()
+
+    def get_fuzzing_value(self):
+        template = Template('$class_name($constructor_arguments)')
+        value = template.substitute(class_name = self.clazz.name,
+                                    constructor_arguments = ', '.join(self.caller.function_arguments))
+        extra = '\n'.join(self.extra) + '\n'.join(self.caller.parameter_definitions)
+        return ParameterValue(value, extra, self.imports)
 
     def call(self):
         if self.constructor == None:

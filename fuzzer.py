@@ -16,7 +16,8 @@ from core import Stats
 from core import FunctionCallerFactory, MethodCallerFactory
 
 NO_EXCLUDES = []
-NO_COROUTINE_FUZZING = False
+DISABLE_COROUTINE_FUZZING = False
+ENABLE_COROUTINE_FUZZING = True
 
 GET_TRACEBACK_CODE = """
 try:
@@ -120,6 +121,7 @@ class BaseFunctionFuzzer(BaseFuzzer):
 
 # looks for a set of parameters which results to successful call
 # it just exits if a callable has 0 or 1 parameter
+# TODO: add extra fuzzing values (see Task)
 class CorrectParametersFuzzer(BaseFuzzer):
 
     def __init__(self, caller, path = None):
@@ -300,8 +302,8 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
 
 class SmartClassFuzzer(BaseFuzzer):
 
-    def __init__(self, clazz, path = None, excludes = None):
-        super().__init__(path, excludes)
+    def __init__(self, clazz, path = None, excludes = None, fuzzing_values = DEFAULT_FUZZING_VALUES):
+        super().__init__(path, excludes, fuzzing_values)
         self.clazz = clazz
 
     def run(self):
@@ -323,7 +325,8 @@ class SmartClassFuzzer(BaseFuzzer):
 
         # start actual fuzzing
         for method in self.clazz.get_methods():
-            fuzzer = SmartMethodFuzzer(method, constructor_caller)
+            fuzzer = SmartMethodFuzzer(method, constructor_caller, ENABLE_COROUTINE_FUZZING,
+                                       self.path, self.excludes, self.fuzzing_values)
             fuzzer.set_output_path(self.path)
             fuzzer.set_excludes(self.excludes)
             fuzzer.run()
@@ -336,8 +339,9 @@ class SmartClassFuzzer(BaseFuzzer):
 
 class SmartMethodFuzzer(BaseFuzzer):
 
-    def __init__(self, method, constructor_caller, path = None, excludes = None, fuzz_coroutine = True):
-        super().__init__(path, excludes)
+    def __init__(self, method, constructor_caller, fuzz_coroutine = True,
+                 path = None, excludes = None, fuzzing_values = DEFAULT_FUZZING_VALUES):
+        super().__init__(path, excludes, fuzzing_values)
         self.method = method
         self.constructor_caller = constructor_caller
         self.fuzz_coroutine = fuzz_coroutine
@@ -401,12 +405,12 @@ class CoroutineFuzzer(BaseFuzzer):
         close_caller = SubsequentMethodCaller(self.caller, 'close')
         self.run_and_dump_code(close_caller)
         fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object],
-                                        NO_EXCLUDES, NO_COROUTINE_FUZZING)
+                                        NO_EXCLUDES, DISABLE_COROUTINE_FUZZING)
         fuzzer.run()
         # TODO: what does it expect in the third parameter? TracebackException?
         fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'throw',
                                         [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object],
-                                        NO_EXCLUDES, NO_COROUTINE_FUZZING)
+                                        NO_EXCLUDES, DISABLE_COROUTINE_FUZZING)
         fuzzer.run()
 
     def log(self, message):
@@ -415,7 +419,7 @@ class CoroutineFuzzer(BaseFuzzer):
 class SubsequentMethodFuzzer(SmartMethodFuzzer):
 
     def __init__(self, base_caller, path, subsequent_method_name, parameter_types = [], excludes = [], fuzz_coroutine = True):
-        super().__init__(base_caller.method, base_caller.constructor_caller, path, excludes, fuzz_coroutine)
+        super().__init__(base_caller.method, base_caller.constructor_caller, fuzz_coroutine, path, excludes)
         self.base_caller = base_caller
         self.subsequent_method_name = subsequent_method_name
         self.parameter_types = parameter_types

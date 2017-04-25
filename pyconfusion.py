@@ -45,7 +45,9 @@ class Task:
         return TargetFinder(self.src(), self.modules(), self.excludes()).run(self.finder_filter())
 
     def fuzz(self):
-        for target in self.search_targets():
+        targets = self.search_targets()
+        extra_fuzzing_values = self.look_for_class_instances(targets)
+        for target in targets:
             # check if the line matches specified filter
             if self.skip_fuzzing(target): continue
 
@@ -57,7 +59,28 @@ class Task:
 
             fuzzer.set_output_path(self.out())
             fuzzer.set_excludes(self.excludes())
+            fuzzer.add_fuzzing_values(extra_fuzzing_values)
             fuzzer.run()
+
+    def look_for_class_instances(self, targets):
+        self.log('look for extra fuzzing values')
+        values = []
+        for target in targets:
+            if isinstance(target, TargetClass):
+                self.log('try to create an instance of class: {0:s}'.format(target.name))
+                if not target.has_constructor():
+                    self.warn('could not find a constructor of class: {0}'.format(target.name))
+                    return
+                finder = CorrectParametersFuzzer(ConstructorCaller(target))
+                finder.run()
+                if not finder.success():
+                    self.warn('could not create an instance of "{0:s}" class, skip fuzzing'. format(target.name))
+                    return
+                constructor_caller = finder.get_caller()
+                self.log('found a new fuzzing value: class {0:s}'.format(target.name))
+                values.append(constructor_caller.get_fuzzing_value())
+        self.log('found {0:d} extra fuzzing values'.format(len(values)))
+        return values
 
     # returns true if fuzzing of specified target should be skipped
     def skip_fuzzing(self, target):
@@ -73,6 +96,12 @@ class Task:
                 if self.excludes() in target.fullname(): return True
 
         return False
+
+    def log(self, message):
+        core.print_with_prefix('Task', message)
+
+    def warn(self, message):
+        self.log('warning: {0:s}'.format(message))
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src',            help='path to sources', default='./')
