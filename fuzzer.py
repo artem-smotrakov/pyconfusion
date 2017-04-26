@@ -15,7 +15,9 @@ from core import SubsequentMethodCaller
 from core import Stats
 from core import FunctionCallerFactory, MethodCallerFactory
 
+NO_PATH = None
 NO_EXCLUDES = []
+NO_VALUES = []
 DISABLE_COROUTINE_FUZZING = False
 ENABLE_COROUTINE_FUZZING = True
 
@@ -38,24 +40,46 @@ DEFAULT_FUZZING_VALUES = ('42', '42.3', '2 ** 16', '-1 * 2 ** 16', 'True', 'Fals
 # the following value often cause "hangs"
 # ParameterValue('sys.maxsize', '', 'import sys'), ParameterValue('-sys.maxsize-1', '', 'import sys'),
 
-GENERAL_PARAMETER_VALUES = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '42.3', 'None',
-                            ParameterValue('sys.exc_info()[2]', '', 'import sys'),
-                            ParameterValue('tb', GET_TRACEBACK_CODE, 'import sys'))
+DEFAULT_GENERAL_PARAMETER_VALUES = ('42', '"test"', 'True', '(1,2)', '[1,2]', '{"a":3}', 'bytes()', 'bytearray()', '42.3', 'None',
+                                    ParameterValue('sys.exc_info()[2]', '', 'import sys'),
+                                    ParameterValue('tb', GET_TRACEBACK_CODE, 'import sys'))
+
+DEFAULT_MAX_PARAM_NUMBER = 3
 
 # base class for fuzzers, contains common methods
 class BaseFuzzer:
 
-    def __init__(self, path = None, excludes = [], fuzzing_values = DEFAULT_FUZZING_VALUES):
-        self.dump = TestDump(path)
-        self.excludes = excludes
+    def __init__(self):
+        self.excludes = NO_EXCLUDES
+        self.path = NO_PATH
+        self.fuzzing_values = NO_VALUES
+        self.general_parameter_values = NO_VALUES
+
+    # sets a path where the fuzzer should dump generated code to
+    def set_output_path(self, path):
         self.path = path
+        self.dump = TestDump(path)
+
+    # sets an exclude list
+    def set_excludes(self, excludes):
+        self.excludes = excludes
+
+    def set_fuzzing_values(self, values):
         self.fuzzing_values = []
-        self.add_fuzzing_values(fuzzing_values)
+        self.add_fuzzing_values(values)
 
-    def set_output_path(self, path): self.path = path
-    def set_excludes(self, excludes): self.excludes = excludes
-    def add_fuzzing_values(self, fuzzing_values): self.fuzzing_values.extend(fuzzing_values)
+    def add_fuzzing_values(self, values):
+        self.fuzzing_values.extend(values)
 
+    def set_general_parameter_values(self, values):
+        self.general_parameter_values = []
+        self.add_general_parameter_values(values)
+
+    def add_general_parameter_values(self, values):
+        self.general_parameter_values.extend(values)
+
+    # runs and stores generated code to specified location
+    # all exceptions are caught and logged in this method
     def run_and_dump_code(self, caller):
         result = False
         self.dump.store(caller)
@@ -69,6 +93,8 @@ class BaseFuzzer:
         Stats.get().increment_tests()
         return result
 
+    # checks if a target should be skipped
+    # returns true if a target should not be fuzzed, false otherwise
     def skip(self, target):
         if self.excludes:
             if isinstance(self.excludes, list):
@@ -83,8 +109,8 @@ class BaseFuzzer:
 
 class BaseFunctionFuzzer(BaseFuzzer):
 
-    def __init__(self, function, path = None, excludes = []):
-        super().__init__(path, excludes)
+    def __init__(self, function):
+        super().__init__()
         self.function = function
 
     def skip(self):
@@ -121,11 +147,10 @@ class BaseFunctionFuzzer(BaseFuzzer):
 
 # looks for a set of parameters which results to successful call
 # it just exits if a callable has 0 or 1 parameter
-# TODO: add extra fuzzing values (see Task)
 class CorrectParametersFuzzer(BaseFuzzer):
 
-    def __init__(self, caller, path = None):
-        super().__init__(path, NO_EXCLUDES, GENERAL_PARAMETER_VALUES)
+    def __init__(self, caller):
+        super().__init__()
         self.caller = caller
         self.found = False
         self.changed_parameters_number = False
@@ -161,7 +186,7 @@ class CorrectParametersFuzzer(BaseFuzzer):
                 if self.could_make_successful_call(caller): return
                 if self.changed_parameters_number: return
             else:
-                for value in self.fuzzing_values:
+                for value in self.general_parameter_values:
                     caller.set_parameter_value(current_arg_number, value)
                     if self.could_make_successful_call(caller): return
                     if self.changed_parameters_number: return
@@ -169,7 +194,7 @@ class CorrectParametersFuzzer(BaseFuzzer):
             if self.could_set_default_value(caller, current_arg_number):
                 self.search(caller, current_arg_number + 1, number_of_parameters)
             else:
-                for value in self.fuzzing_values:
+                for value in self.general_parameter_values:
                     caller.set_parameter_value(current_arg_number, value)
                     self.search(caller, current_arg_number + 1, number_of_parameters)
                     if self.found: return
@@ -227,14 +252,15 @@ class CorrectParametersFuzzer(BaseFuzzer):
     def warn(self, message):
         self.log('warning: {0:s}'.format(message))
 
-class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
+class HardCorrectParametersFuzzer(BaseFuzzer):
 
-    def __init__(self, caller_factory, path = None, max_params = 3):
-        super().__init__(path)
+    def __init__(self, caller_factory):
+        super().__init__()
         self.caller_factory = caller_factory
-        self.max_params = max_params
+        self.max_params = DEFAULT_MAX_PARAM_NUMBER
         self.found = False
 
+    def set_max_params(self, max_params): self.max_params = max_params
     def success(self):      return self.found
     def get_caller(self):   return self.caller
 
@@ -245,6 +271,7 @@ class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
             self.set_parameters(n)
             self.caller = self.caller_factory.create()
             fuzzer = CorrectParametersFuzzer(self.caller)
+            fuzzer.set_general_parameter_values(self.general_parameter_values)
             fuzzer.set_output_path(self.path)
             fuzzer.run()
             if fuzzer.success():
@@ -264,8 +291,8 @@ class HardCorrectParametersFuzzer(BaseFunctionFuzzer):
 # TODO: fuzz different number of parameters - range(self.function.number_of_required_parameters(), self.number_of_parameters())
 class SmartFunctionFuzzer(BaseFunctionFuzzer):
 
-    def __init__(self, function, path = None, excludes = []):
-        super().__init__(function, path, excludes)
+    def __init__(self, function):
+        super().__init__(function)
 
     def fuzz(self):
         # first, try to find parameter values which lead to a successful invocation
@@ -273,6 +300,7 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
         if self.function.has_unknown_parameters():
             self.warn('function with unknown parameters: ' + self.function.name)
             fuzzer = HardCorrectParametersFuzzer(FunctionCallerFactory(self.function))
+            fuzzer.set_general_parameter_values(self.general_parameter_values)
             fuzzer.set_output_path(self.path)
             fuzzer.run()
             if fuzzer.success(): successful_caller = fuzzer.get_caller()
@@ -280,6 +308,7 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
             successful_caller = FunctionCaller(self.function)
         else:
             fuzzer = CorrectParametersFuzzer(FunctionCaller(self.function))
+            fuzzer.set_general_parameter_values(self.general_parameter_values)
             fuzzer.set_output_path(self.path)
             fuzzer.run()
             if fuzzer.success(): successful_caller = fuzzer.get_caller()
@@ -302,8 +331,8 @@ class SmartFunctionFuzzer(BaseFunctionFuzzer):
 
 class SmartClassFuzzer(BaseFuzzer):
 
-    def __init__(self, clazz, path = None, excludes = None, fuzzing_values = DEFAULT_FUZZING_VALUES):
-        super().__init__(path, excludes, fuzzing_values)
+    def __init__(self, clazz):
+        super().__init__()
         self.clazz = clazz
 
     def run(self):
@@ -316,17 +345,21 @@ class SmartClassFuzzer(BaseFuzzer):
         if not self.clazz.has_constructor():
             self.warn('could not find a constructor of class: {0}'.format(self.clazz.name))
             return
-        finder = CorrectParametersFuzzer(ConstructorCaller(self.clazz))
-        finder.run()
-        if not finder.success():
+        fuzzer = CorrectParametersFuzzer(ConstructorCaller(self.clazz))
+        fuzzer.set_general_parameter_values(self.general_parameter_values)
+        fuzzer.set_output_path(self.path)
+        fuzzer.run()
+        if not fuzzer.success():
             self.warn('could not create an instance of "{0:s}" class, skip fuzzing'. format(self.clazz.name))
             return
-        constructor_caller = finder.get_caller()
+        constructor_caller = fuzzer.get_caller()
 
         # start actual fuzzing
         for method in self.clazz.get_methods():
-            fuzzer = SmartMethodFuzzer(method, constructor_caller, ENABLE_COROUTINE_FUZZING,
-                                       self.path, self.excludes, self.fuzzing_values)
+            fuzzer = SmartMethodFuzzer(method, constructor_caller)
+            fuzzer.enable_coroutine_fuzzing()
+            fuzzer.set_fuzzing_values(self.fuzzing_values)
+            fuzzer.set_general_parameter_values(self.general_parameter_values)
             fuzzer.set_output_path(self.path)
             fuzzer.set_excludes(self.excludes)
             fuzzer.run()
@@ -339,12 +372,14 @@ class SmartClassFuzzer(BaseFuzzer):
 
 class SmartMethodFuzzer(BaseFuzzer):
 
-    def __init__(self, method, constructor_caller, fuzz_coroutine = True,
-                 path = None, excludes = None, fuzzing_values = DEFAULT_FUZZING_VALUES):
-        super().__init__(path, excludes, fuzzing_values)
+    def __init__(self, method, constructor_caller):
+        super().__init__()
         self.method = method
         self.constructor_caller = constructor_caller
-        self.fuzz_coroutine = fuzz_coroutine
+        self.fuzz_coroutine = ENABLE_COROUTINE_FUZZING
+
+    def disable_coroutine_fuzzing(self): self.fuzz_coroutine = False
+    def enable_coroutine_fuzzing(self):  self.fuzz_coroutine = True
 
     def run(self):
         if self.skip(self.method):
@@ -355,6 +390,7 @@ class SmartMethodFuzzer(BaseFuzzer):
         if self.method.has_unknown_parameters():
             self.warn('method with unknown parameters: ' + self.method.fullname())
             fuzzer = HardCorrectParametersFuzzer(MethodCallerFactory(self.method, self.constructor_caller))
+            fuzzer.set_general_parameter_values(self.general_parameter_values)
             fuzzer.set_output_path(self.path)
             fuzzer.run()
             if fuzzer.success(): successful_caller = fuzzer.get_caller()
@@ -362,6 +398,7 @@ class SmartMethodFuzzer(BaseFuzzer):
             successful_caller = MethodCaller(self.method, self.constructor_caller)
         else:
             fuzzer = CorrectParametersFuzzer(MethodCaller(self.method, self.constructor_caller))
+            fuzzer.set_general_parameter_values(self.general_parameter_values)
             fuzzer.set_output_path(self.path)
             fuzzer.run()
             if fuzzer.success(): successful_caller = fuzzer.get_caller()
@@ -372,6 +409,8 @@ class SmartMethodFuzzer(BaseFuzzer):
                  .format(self.method.fullname(), self.method.number_of_parameters()))
         if self.method.has_no_parameters() and self.fuzz_coroutine:
             fuzzer = CoroutineFuzzer(successful_caller.clone())
+            fuzzer.set_fuzzing_values(self.fuzzing_values)
+            fuzzer.set_general_parameter_values(self.general_parameter_values)
             fuzzer.set_output_path(self.path)
             fuzzer.run()
         for parameter_index in range(1, self.method.number_of_parameters()+1):
@@ -381,6 +420,8 @@ class SmartMethodFuzzer(BaseFuzzer):
                 self.run_and_dump_code(caller)
                 if self.fuzz_coroutine:
                     fuzzer = CoroutineFuzzer(caller)
+                    fuzzer.set_fuzzing_values(self.fuzzing_values)
+                    fuzzer.set_general_parameter_values(self.general_parameter_values)
                     fuzzer.set_output_path(self.path)
                     fuzzer.run()
 
@@ -392,25 +433,28 @@ class SmartMethodFuzzer(BaseFuzzer):
 
 class CoroutineFuzzer(BaseFuzzer):
 
-    def __init__(self, caller, path = None):
-        super().__init__(path)
+    def __init__(self, caller):
+        super().__init__()
         self.caller = caller
 
     def run(self):
-        checker = CoroutineChecker(self.caller)
-        if not checker.is_coroutine():
-            self.log('it is not a coroutine')
+        if not CoroutineChecker(self.caller).is_coroutine():
+            self.log('it is not a coroutine, quit')
             return
         self.log('coroutine found')
         close_caller = SubsequentMethodCaller(self.caller, 'close')
         self.run_and_dump_code(close_caller)
-        fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object],
-                                        NO_EXCLUDES, DISABLE_COROUTINE_FUZZING)
+        fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
+        fuzzer.set_fuzzing_values(self.fuzzing_values)
+        fuzzer.set_general_parameter_values(self.general_parameter_values)
+        fuzzer.disable_coroutine_fuzzing()
         fuzzer.run()
         # TODO: what does it expect in the third parameter? TracebackException?
         fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'throw',
-                                        [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object],
-                                        NO_EXCLUDES, DISABLE_COROUTINE_FUZZING)
+                                        [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
+        fuzzer.set_fuzzing_values(self.fuzzing_values)
+        fuzzer.set_general_parameter_values(self.general_parameter_values)
+        fuzzer.disable_coroutine_fuzzing()
         fuzzer.run()
 
     def log(self, message):
@@ -418,8 +462,8 @@ class CoroutineFuzzer(BaseFuzzer):
 
 class SubsequentMethodFuzzer(SmartMethodFuzzer):
 
-    def __init__(self, base_caller, path, subsequent_method_name, parameter_types = [], excludes = [], fuzz_coroutine = True):
-        super().__init__(base_caller.method, base_caller.constructor_caller, fuzz_coroutine, path, excludes)
+    def __init__(self, base_caller, subsequent_method_name, parameter_types = []):
+        super().__init__(base_caller.method, base_caller.constructor_caller)
         self.base_caller = base_caller
         self.subsequent_method_name = subsequent_method_name
         self.parameter_types = parameter_types

@@ -60,6 +60,7 @@ class Task:
             fuzzer.set_output_path(self.out())
             fuzzer.set_excludes(self.excludes())
             fuzzer.add_fuzzing_values(extra_fuzzing_values)
+            fuzzer.add_general_parameter_values(extra_fuzzing_values)
             fuzzer.run()
 
     def look_for_class_instances(self, targets):
@@ -71,12 +72,13 @@ class Task:
                 if not target.has_constructor():
                     self.warn('could not find a constructor of class: {0}'.format(target.name))
                     return
-                finder = CorrectParametersFuzzer(ConstructorCaller(target))
-                finder.run()
-                if not finder.success():
+                fuzzer = CorrectParametersFuzzer(ConstructorCaller(target))
+                fuzzer.set_output_path(self.out())
+                fuzzer.run()
+                if not fuzzer.success():
                     self.warn('could not create an instance of "{0:s}" class, skip fuzzing'. format(target.name))
                     return
-                constructor_caller = finder.get_caller()
+                constructor_caller = fuzzer.get_caller()
                 self.log('found a new fuzzing value: class {0:s}'.format(target.name))
                 values.append(constructor_caller.get_fuzzing_value())
         self.log('found {0:d} extra fuzzing values'.format(len(values)))
