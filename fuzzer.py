@@ -52,8 +52,8 @@ class BaseFuzzer:
     def __init__(self):
         self.excludes = NO_EXCLUDES
         self.path = NO_PATH
-        self.fuzzing_values = NO_VALUES
-        self.general_parameter_values = NO_VALUES
+        self.set_fuzzing_values(DEFAULT_FUZZING_VALUES)
+        self.set_general_parameter_values(DEFAULT_GENERAL_PARAMETER_VALUES)
 
     # sets a path where the fuzzer should dump generated code to
     def set_output_path(self, path):
