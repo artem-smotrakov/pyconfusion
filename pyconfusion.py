@@ -71,13 +71,13 @@ class Task:
                 self.log('try to create an instance of class: {0:s}'.format(target.name))
                 if not target.has_constructor():
                     self.warn('could not find a constructor of class: {0}'.format(target.name))
-                    return
+                    continue
                 fuzzer = CorrectParametersFuzzer(ConstructorCaller(target))
                 fuzzer.set_output_path(self.out())
                 fuzzer.run()
                 if not fuzzer.success():
                     self.warn('could not create an instance of "{0:s}" class, skip fuzzing'. format(target.name))
-                    return
+                    continue
                 constructor_caller = fuzzer.get_caller()
                 self.log('found a new fuzzing value: class {0:s}'.format(target.name))
                 values.append(constructor_caller.get_fuzzing_value())
