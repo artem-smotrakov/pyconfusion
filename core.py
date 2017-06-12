@@ -23,6 +23,16 @@ def print_with_indent(prefix, first_message, other_messages):
         for message in other_messages:
             print(wrapper.fill(message))
 
+# logs specified code to a temporary file, runs the code, and delete the file
+def store_and_execute(code):
+    filename = 'latest_test.py'
+    with open(filename, 'w') as text_file:
+        text_file.write(code)
+    try:
+        exec(code)
+    finally:
+        os.unlink(filename)
+
 class Singleton(type):
     _instances = {}
     def __call__(cls, *args, **kwargs):
@@ -215,8 +225,7 @@ $module_name.$function_name($function_arguments)
 
     def call(self):
         self.prepare()
-        self.log('run the following code:\n\n' + self.code)
-        exec(self.code)
+        store_and_execute(self.code)
 
     def log(self, message):
         print_with_prefix('FunctionCaller', message)
@@ -286,8 +295,7 @@ object = $class_name($constructor_arguments)
             self.warn('could not find a constructor of class: {0}'.format(clazz.name))
             return
         self.prepare()
-        self.log('run the following code:\n' + self.code)
-        exec(self.code)
+        store_and_execute(self.code)
 
     def log(self, message):
         print_with_prefix('ConstructorCaller', message)
@@ -366,8 +374,7 @@ r = object.$method_name($method_arguments)
 
     def call(self):
         self.prepare()
-        self.log('run the following code:\n' + self.code)
-        exec(self.code)
+        store_and_execute(self.code)
 
     def log(self, message):
         print_with_prefix('MethodCaller', message)
@@ -390,9 +397,8 @@ if not 'throw' in dir(r) and not 'send' in dir(r) and not 'close' in dir(r):
 
     def is_coroutine(self):
         self.prepare()
-        self.log('run the following code (check for a coroutine):\n' + self.code)
         try:
-            exec(self.code)
+            store_and_execute(self.code)
             return True
         except Exception:
             return False
@@ -449,8 +455,7 @@ r.$method_name($method_arguments)
 
     def call(self):
         self.prepare()
-        self.log('run the following code:\n' + self.code)
-        exec(self.code)
+        store_and_execute(self.code)
 
     def set_parameter_value(self, arg_number, value):
         self.parameter_values[arg_number - 1] = value
