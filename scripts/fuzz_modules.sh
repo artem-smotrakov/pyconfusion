@@ -1,8 +1,12 @@
 #!/bin/bash
 
-for module in `cat modules`
+EXCLUDE_LIST=${EXCLUDE_LIST:-"exclude_list"}
+FUZZED_MODULES=${FUZZED_MODULES:-"fuzzed_modules"}
+MODULES=${MODULES:-"modules"}
+LOGS=${LOGS:-"."}
+for module in `cat ${MODULES}`
 do
-  if grep -Fx ${module} fuzzed_modules > /dev/null 2>&1; then
+  if grep -Fx ${module} ${FUZZED_MODULES} > /dev/null 2>&1; then
      continue
   fi
 
@@ -13,12 +17,12 @@ do
       ${WS}/pyconfusion.py \
         --command fuzzer \
         --modules ${module} \
-        --exclude `cat exclude_list` > ${module}.log 2>&1
+        --exclude `cat ${EXCLUDE_LIST}` > ${LOGS}/${module}.log 2>&1
 
   if [ $? -ne 0 ]; then
     echo "game over"
     break
   fi
 
-  echo ${module} >> fuzzed_modules
+  echo ${module} >> ${FUZZED_MODULES}
 done
