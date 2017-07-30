@@ -448,6 +448,7 @@ class CoroutineFuzzer(BaseFuzzer):
         fuzzer.set_fuzzing_values(self.fuzzing_values)
         fuzzer.set_general_parameter_values(self.general_parameter_values)
         fuzzer.disable_coroutine_fuzzing()
+        fuzzer.set_output_path(self.path)
         fuzzer.run()
         # TODO: what does it expect in the third parameter? TracebackException?
         fuzzer = SubsequentMethodFuzzer(self.caller, 'throw',
@@ -455,6 +456,7 @@ class CoroutineFuzzer(BaseFuzzer):
         fuzzer.set_fuzzing_values(self.fuzzing_values)
         fuzzer.set_general_parameter_values(self.general_parameter_values)
         fuzzer.disable_coroutine_fuzzing()
+        fuzzer.set_output_path(self.path)
         fuzzer.run()
 
     def log(self, message):
