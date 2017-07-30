@@ -444,13 +444,13 @@ class CoroutineFuzzer(BaseFuzzer):
         self.log('coroutine found')
         close_caller = SubsequentMethodCaller(self.caller, 'close')
         self.run_and_dump_code(close_caller)
-        fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'send', [ParameterType.any_object])
+        fuzzer = SubsequentMethodFuzzer(self.caller, 'send', [ParameterType.any_object])
         fuzzer.set_fuzzing_values(self.fuzzing_values)
         fuzzer.set_general_parameter_values(self.general_parameter_values)
         fuzzer.disable_coroutine_fuzzing()
         fuzzer.run()
         # TODO: what does it expect in the third parameter? TracebackException?
-        fuzzer = SubsequentMethodFuzzer(self.caller, self.path, 'throw',
+        fuzzer = SubsequentMethodFuzzer(self.caller, 'throw',
                                         [ParameterType.exception_type, ParameterType.exception, ParameterType.any_object])
         fuzzer.set_fuzzing_values(self.fuzzing_values)
         fuzzer.set_general_parameter_values(self.general_parameter_values)
