@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import argparse
+import os.path
 from fuzzer import *
 from targets import *
 
@@ -32,23 +33,21 @@ class Task:
     def fuzzer_filter(self): return self.args['fuzzer_filter']
     def fuzzing_data(self):  return self.args['fuzzing_data']
 
+    # returns a list of excluded elements
     def excludes(self):
-        excludes = []
-        if self.args['exclude']:
-            excludes = excludes + self.args['exclude'].split(',')
-        if self.args['exclude_list']:
-            excludes = excludes + parse_list(self.args['exclude_list'])
-        return excludes
+        if not self.args['exclude']:
+            return []
+        if os.path.isfile(self.args['exclude']):
+            return parse_list(self.args['exclude'])
+        return self.args['exclude'].split(',')
 
     # returns a list of modules
-    # which were specified by --modules and --module_list options
     def modules(self):
-        modules = []
-        if self.args['modules']:
-            modules = modules + self.args['modules'].split(',')
-        if self.args['module_list']:
-            modules = modules + parse_list(self.args['module_list'])
-        return modules
+        if not os.path.isfile(self.args['modules']):
+            return []
+        if os.path.isfile(self.args['modules']):
+            return parse_list(self.args['modules'])
+        return self.args['modules'].split(',')
 
     def run(self):
         if   self.no_src() == None: raise Exception('Sources not specified')
@@ -127,10 +126,8 @@ parser.add_argument('--command',        help='what do you want to do?',
 parser.add_argument('--fuzzer_filter',  help='target filter for fuzzer', default='')
 parser.add_argument('--finder_filter',  help='file filter for finder', default='')
 parser.add_argument('--out',            help='path to directory for generated tests')
-parser.add_argument('--exclude',        help='comma-separated list of objects to exclude')
-parser.add_argument('--exclude_list',   help='path to exclude list')
-parser.add_argument('--modules',        help='comma-separated list of modules to fuzz', default='')
-parser.add_argument('--module_list',    help='path to list of modules to fuzz', default='')
+parser.add_argument('--exclude',        help='comma-separated list of objects to exclude or path to exclude list', default='')
+parser.add_argument('--modules',        help='comma-separated list of modules to fuzz or path to file with modules', default='')
 parser.add_argument('--fuzzing_data',   help='a script which provides data for fuzzing', default='')
 
 # create task
