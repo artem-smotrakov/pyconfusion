@@ -30,7 +30,7 @@ def extract(s, first, second):
     return None
 
 def read_file(filename):
-    with open(filename) as f:
+    with open(filename, encoding='utf-8', errors='ignore') as f:
         return f.readlines()
 
 def contains_all(string, values=[]):
