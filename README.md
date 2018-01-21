@@ -2,7 +2,9 @@
 
 ## What is PyConfusion?
 
-PyConfusion is a tool for negative testing of Python API such as functions and methods. PyConfusion invokes function and methods with incorrect and unexpected parameters which may uncover bugs. In other words, PyConfusion works as an API fuzzer. For example, let's assume that we have `foo` function which takes two parameters, and expect the first one to be a string, and the second one to be an integer. PyConfusion is going to run `foo` function with different combinations of parameters such as `('string', [])`, `(1.2, ()`), `(1, "x" * 2 ** 20`) and so on. 
+Making a long story short, PyConfusion is an API fuzzer for Python.
+
+PyConfusion is a tool for negative testing of Python API such as functions, classes and methods. PyConfusion invokes APIs with incorrect and unexpected parameters which may uncover bugs. In other words, PyConfusion works as an API fuzzer. For example, let's assume that we have `foo` function which takes two parameters, and expect the first one to be a string, and the second one to be an integer. PyConfusion is going to run `foo` function with different combinations of parameters such as `('string', [])`, `(1.2, ()`), `(1, "x" * 2 ** 20`) and so on. 
 
 Currently PyConfusion is good to use with functions and methods whcih are implemented in C/C++. If `foo` is implemented in C/C++, and doesn't properly check for input values before using them, then unexpected parameters may trigger type confusions, memory corruptions, and other issues which may affect C/C++ code.
 
