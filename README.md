@@ -103,7 +103,13 @@ python3 pyconfusion.py --command fuzzer --modules /path/to/module/list
 
 ## Run PyConfusion in a Docker container
 
-PyConfusion may take long time, and may consume a lot of resources. For better isolation, it may be run in a Docker container. [configs/cpython3](configs/cpython3) contains an example of Dockerfile which can be used to test CPython.
+PyConfusion may take long time, and may consume a lot of resources. For better isolation, it may be run in a Docker container. [configs/cpython3](configs/cpython3) contains an example of Dockerfile which can be used to test CPython. The Dockerfile instructs Docker to do the following:
+
+* install all necessart dependencies
+* download latest [CPython sources](https://github.com/python/cpython)
+* build CPython with enabled runtime memory checker
+* look for all available native modules
+* and finally run testing for all found native modules, or only for specific ones
 
 The following command builds a docker image. It should be run from the root of pyconfusion repository:
 
@@ -128,7 +134,14 @@ docker run -v `pwd`/results:/var/results -e MODULE=_io pyconfusion/python3
 
 ## PyConfusion and AddressSanitizer
 
-TBD
+It may be useful to build modules with AddressSanitizer (and may be with other runtime checkers). It may help to identify more issues. CPython supports AddressSanitizer out-of-the-box. It can be enabled in build-time like the following:
+
+```
+ASAN_OPTIONS="detect_leaks=0 allocator_may_return_null=1"
+./configure --prefix=/var/python --with-pydebug --with-address-sanitizer
+make -s -j2
+make install
+```
 
 ## What's next?
 
