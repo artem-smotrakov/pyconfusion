@@ -103,7 +103,28 @@ python3 pyconfusion.py --command fuzzer --modules /path/to/module/list
 
 ## Run PyConfusion in a Docker container
 
-TBD
+PyConfusion may take long time, and may consume a lot of resources. For better isolation, it may be run in a Docker container. [configs/cpython3](configs/cpython3) contains an example of Dockerfile which can be used to test CPython.
+
+The following command builds a docker image. It should be run from the root of pyconfusion repository:
+
+```
+docker build --file configs/cpython3/Dockerfile --tag pyconfusion/cpython3 .
+```
+
+The following commands run fuzzing for all available native modules:
+
+```
+mkdir -p results
+docker run -v `pwd`/results:/var/results pyconfusion/cpython3
+```
+
+Logs are going to be written to `./results directory`, and `./results/fuzzed_modules` file is going to contain a list of fuzzed modules. If the container rerun, the modules listed in `./results/fuzzed_modules` are going to be skipped
+
+Use the following commands to rerun specific modules (for example, _io module)
+
+```
+docker run -v `pwd`/results:/var/results -e MODULE=_io pyconfusion/python3
+```
 
 ## PyConfusion and AddressSanitizer
 
