@@ -15,7 +15,7 @@ fuzz() {
       ${WS}/pyconfusion.py \
         --command fuzzer \
         --modules ${module} \
-        --exclude `cat ${EXCLUDE_LIST}` > ${LOGS}/${module}.log 2>&1
+        --exclude ${EXCLUDE_LIST} > ${LOGS}/${module}.log 2>&1
 
   if [ $? -ne 0 ]; then
     echo "game over"
