@@ -13,7 +13,8 @@ def parse_list(filename):
             line = line.strip()
             if len(line) == 0 or line.startswith('#'):
                 continue
-            items.append(line)
+            for s in line.split(','):
+                items.append(s.strip())
     return items
 
 
