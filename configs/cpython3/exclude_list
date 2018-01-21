@@ -1,0 +1,1 @@
+_posixsubprocess.fork_exec,time.mktime,time.asctime,sys.exit,select.epoll,fromfd,_testcapi,_struct,select.select,termios.tcflow,io.open,zlib,_tkinter,audioop,resource.setrlimit,io.OpenWrapper,io.open,_ctypes,builtins.False,__main__.read_file,__main__.pyrun_exec_code_file,__main__.pyrun_prompt,__main__.raw_input,itertools.product.__class__
