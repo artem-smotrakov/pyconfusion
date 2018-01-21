@@ -26,8 +26,6 @@ class Task:
         self.args = vars(args)
 
     def command(self):  return self.args['command']
-    def src(self):      return self.args['src']
-    def no_src(self):   return self.src() == None
     def out(self):      return self.args['out']
     def finder_filter(self): return self.args['finder_filter']
     def fuzzer_filter(self): return self.args['fuzzer_filter']
@@ -43,23 +41,25 @@ class Task:
 
     # returns a list of modules
     def modules(self):
-        if not os.path.isfile(self.args['modules']):
+        if not self.args['modules']:
             return []
         if os.path.isfile(self.args['modules']):
             return parse_list(self.args['modules'])
         return self.args['modules'].split(',')
 
     def run(self):
-        if   self.no_src() == None: raise Exception('Sources not specified')
         if   self.command() == 'targets': self.search_targets()
         elif self.command() == 'fuzzer':  self.fuzz()
         else: raise Exception('Unknown command: ' + self.command())
 
     def search_targets(self):
-        return TargetFinder(self.src(), self.modules(), self.excludes()).run(self.finder_filter())
+        return TargetFinder(self.args['src'], self.modules(), self.excludes()).run(self.finder_filter())
 
     def fuzz(self):
         targets = self.search_targets()
+        if len(targets) == 0:
+            self.warn('no targets! exiting ...')
+            return
         extra_fuzzing_values = self.look_for_class_instances(targets)
         for target in targets:
             # check if the line matches specified filter
